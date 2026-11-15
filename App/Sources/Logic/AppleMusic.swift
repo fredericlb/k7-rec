@@ -4,7 +4,7 @@ import Foundation
 import RehearsalStore
 
 /// The part of an `MPMediaItem` the app reads, so a test can stand in for the library.
-protocol MediaItemInfo {
+protocol MediaItemInfo: Sendable {
     var itemID: String { get }
     var title: String { get }
     var artist: String { get }
@@ -50,12 +50,27 @@ enum AppleMusic {
     static func uuid(of item: some MediaItemInfo) -> String { "apple:" + item.itemID }
 
     /// The song row for `item`; `id` is kept when the item was imported before.
-    static func row(for item: some MediaItemInfo, plan: AppleMusicPlan, id: String = newID(), createdAt: Double = Date().timeIntervalSince1970) -> RehearsalStore.Song {
+    static func row(for item: some MediaItemInfo, plan: AppleMusicPlan, id: String = newID(), createdAt: Double = Date().timeIntervalSince1970, folder: String = "") -> RehearsalStore.Song {
         var storeID = ""
         if case .reference(let s) = plan { storeID = s }
         return RehearsalStore.Song(
             id: id, uuid: uuid(of: item), title: item.title.isEmpty ? "Untitled" : item.title, artist: item.artist,
-            createdAt: createdAt, source: storeID.isEmpty ? .file : .appleMusicReference, storeId: storeID)
+            createdAt: createdAt, source: storeID.isEmpty ? .file : .appleMusicReference, storeId: storeID, folder: folder)
+    }
+
+    /// The folder under the songs folder that holds what is made for `item`: its title and the end of its id.
+    static func folderName(for item: some MediaItemInfo) -> String {
+        SongImporter.safe(item.title.isEmpty ? "Untitled" : item.title) + " " + String(item.itemID.suffix(8))
+    }
+
+    /// What to tell the person when the library is not open to the app; nil when it is.
+    static func refusal(_ access: MusicAccess) -> String? {
+        switch access {
+        case .authorized: nil
+        case .restricted: "Apple Music is restricted on this device, so Rehearsal cannot read it."
+        case .denied: "Apple Music access is off. Allow it in Settings."
+        case .notDetermined: "Apple Music access was not given."
+        }
     }
 
     static func label(_ item: some MediaItemInfo) -> String { item.title.isEmpty ? "An item" : "\u{201C}\(item.title)\u{201D}" }

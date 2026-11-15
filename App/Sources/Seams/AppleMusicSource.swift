@@ -39,11 +39,11 @@ final class LiveAppleMusicSource: AppleMusicSource {
 
     func importItems(_ items: [any MediaItemInfo]) async -> String? {
         access = authorizer.access
-        guard access == .authorized else { return "Apple Music access is off. Allow it in Settings." }
+        if let why = AppleMusic.refusal(access) { return why }
         guard task == nil else { return nil }
         let (writer, total) = (writer, items.count)
         let titles = items.map(\.title)
-        let report: @Sendable (AppleMusicProgress) -> Void = { [weak self] p in Task { @MainActor in self?.progress = p } }
+        let report: @Sendable (AppleMusicProgress) -> Void = { [weak self] p in Task { @MainActor in if self?.task != nil { self?.progress = p } } }
         let t = Task.detached {
             await writer.write(items) { i, f in report(AppleMusicProgress(index: i, total: total, fraction: f, title: titles[i])) }
         }

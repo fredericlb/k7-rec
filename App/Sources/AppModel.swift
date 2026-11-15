@@ -125,7 +125,7 @@ final class AppModel {
     /// Asks for the library permission; false, with a notice, when it is refused.
     func allowAppleMusic() async -> Bool {
         let access = await appleMusic.requestAccess()
-        if access != .authorized { notice = "Apple Music access is off. Allow it in Settings." }
+        if let why = AppleMusic.refusal(access) { notice = why }
         return access == .authorized
     }
 

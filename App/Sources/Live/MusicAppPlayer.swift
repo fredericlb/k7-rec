@@ -36,7 +36,7 @@ final class MusicAppPlayer: ReferencePlaying {
         try? AudioSessionConfig.activate()
         player.prepareToPlay()
         player.play()
-        isPlaying = true
+        sync()
     }
 
     func pause() { player.pause(); sync() }

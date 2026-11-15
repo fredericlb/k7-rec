@@ -13,7 +13,8 @@ struct AssetExporter: AudioExporting {
             async let done: Void = box.run()
             while !box.finished {
                 progress(Double(box.session.progress))
-                try? await Task.sleep(nanoseconds: 150_000_000)
+                // A cancelled sleep throws at once; the loop ends and `done` reports the cancelled export.
+                do { try await Task.sleep(nanoseconds: 150_000_000) } catch { break }
             }
             try await done
             progress(1)
@@ -33,12 +34,14 @@ enum ExportError: LocalizedError {
 
 private final class SessionBox: @unchecked Sendable {
     let session: AVAssetExportSession
-    private(set) var finished = false
+    private let lock = NSLock()
+    private var done = false
+    var finished: Bool { lock.withLock { done } }
     init(_ s: AVAssetExportSession) { session = s }
 
     func run() async throws {
         await withCheckedContinuation { c in session.exportAsynchronously { c.resume() } }
-        finished = true
+        lock.withLock { done = true }
         switch session.status {
         case .completed: return
         case .cancelled: throw CancellationError()

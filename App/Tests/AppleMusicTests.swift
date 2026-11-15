@@ -138,3 +138,59 @@ final class AppleMusicTests: XCTestCase {
         XCTAssertEqual(deactivated, 1)
     }
 }
+
+@MainActor
+final class AppleMusicKeepsTests: XCTestCase {
+    private func rig(exporter: AudioExporting = CopyExporter()) throws -> (AppleMusicWriter, Store, URL) {
+        let root = try tempFolder()
+        let store = try Store()
+        return (AppleMusicWriter(store: store, songs: root.appendingPathComponent("Songs"), exporter: exporter), store, root)
+    }
+
+    private func wav(_ root: URL) throws -> URL {
+        let url = root.appendingPathComponent("src.wav")
+        try makeWav(at: url, seconds: 1, amp: 0.5)
+        return url
+    }
+
+    func testPickingAnItemAgainKeepsItsTextsAndTags() async throws {
+        let (writer, store, root) = try rig()
+        let item = FakeItem(assetURL: try wav(root))
+        _ = await writer.write([item]) { _, _ in }
+        let rows = try await store.list(Query<RehearsalStore.Song>())
+        let row = try XCTUnwrap(rows.first)
+        let lib = StoreSongLibrary(store: store, songsFolder: root.appendingPathComponent("Songs"))
+        await lib.refresh()
+        _ = await lib.saveText(.lyrics, "mine", for: lib.songs[0])
+        _ = await lib.setTags(["x"], for: lib.songs[0])
+
+        _ = await writer.write([item]) { _, _ in }
+        await lib.refresh()
+
+        XCTAssertEqual(lib.songs.count, 1)
+        XCTAssertEqual(lib.songs[0].id, row.id)
+        XCTAssertEqual(lib.songs[0].lyrics, "mine")
+        XCTAssertEqual(lib.songs[0].tags, ["x"])
+        XCTAssertNotNil(lib.songs[0].audioURL)
+    }
+
+    func testAFailedExportKeepsTheOldCopy() async throws {
+        let (writer, store, root) = try rig()
+        let item = FakeItem(assetURL: try wav(root))
+        _ = await writer.write([item]) { _, _ in }
+        let failing = AppleMusicWriter(store: store, songs: root.appendingPathComponent("Songs"), exporter: CopyExporter(fail: CancellationError()))
+
+        let out = await failing.write([item]) { _, _ in }
+
+        XCTAssertTrue(out.cancelled)
+        let files = try await store.list(Query<SongFile>())
+        XCTAssertEqual(files.count, 1)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: root.appendingPathComponent("Songs").appendingPathComponent(files[0].path).path))
+    }
+
+    func testRefusalsSayWhy() {
+        XCTAssertNil(AppleMusic.refusal(.authorized))
+        XCTAssertTrue(AppleMusic.refusal(.restricted)!.contains("restricted"))
+        XCTAssertTrue(AppleMusic.refusal(.denied)!.contains("Settings"))
+    }
+}

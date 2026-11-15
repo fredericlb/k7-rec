@@ -6,8 +6,11 @@ import MediaPlayer
 final class MediaAuthorizer: MusicAuthorizing {
     var access: MusicAccess { Self.map(MPMediaLibrary.authorizationStatus()) }
 
-    func request() async -> MusicAccess {
-        await withCheckedContinuation { c in MPMediaLibrary.requestAuthorization { c.resume(returning: Self.map($0)) } }
+    func request() async -> MusicAccess { await Self.ask() }
+
+    // The system calls back on its own queue, so the closure is made where no actor owns it.
+    private nonisolated static func ask() async -> MusicAccess {
+        await withCheckedContinuation { c in MPMediaLibrary.requestAuthorization { c.resume(returning: map($0)) } }
     }
 
     nonisolated static func map(_ s: MPMediaLibraryAuthorizationStatus) -> MusicAccess {

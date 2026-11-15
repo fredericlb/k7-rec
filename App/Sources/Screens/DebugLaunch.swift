@@ -3,7 +3,7 @@ import Foundation
 
 enum DebugLaunch {
     #if DEBUG
-    private static let defaults = UserDefaults.standard
+    nonisolated(unsafe) private static let defaults = UserDefaults.standard
     static let openFirst = defaults.bool(forKey: "OpenFirstSong")
     static let tab = defaults.string(forKey: "OpenTab").flatMap { SongTab(rawValue: $0) }
     static let seek = defaults.string(forKey: "OpenSeek").flatMap(Double.init)

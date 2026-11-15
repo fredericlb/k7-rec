@@ -75,3 +75,9 @@ final class InputBox: @unchecked Sendable {
         return current
     }
 }
+
+/// A switch a test flips between two calls of a closure the code under test keeps.
+@MainActor
+final class Flag {
+    var value = false
+}

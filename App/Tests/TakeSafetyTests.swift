@@ -83,13 +83,13 @@ final class TakeSafetyTests: XCTestCase {
 
     func testTheHeadsetMicrophoneIsAskedForOnlyWhenTheSettingIsOn() async throws {
         let session = ScriptedSession()
-        var on = false
+        let on = Flag()
         let rec = StoreTakeRecorder(
             store: try Store(), takesFolder: try tempFolder(), makeInput: { ScriptedInput() }, makeSession: { session },
-            askMicrophone: { true }, headsetInput: { on })
+            askMicrophone: { true }, headsetInput: { on.value })
         _ = await rec.start(songID: "", title: "a")
         await rec.stop()
-        on = true
+        on.value = true
         _ = await rec.start(songID: "", title: "b")
 
         XCTAssertEqual(session.headsetAsked, [false, true])
