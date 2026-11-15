@@ -31,7 +31,8 @@ Everything else (rate, frames, true peak, envelope) is read back from the CAF, w
 more complete witness, so the sidecar holds no counter that could go stale.
 `TakeRecorder.leftovers(in:)` lists them and `recover(raw:)` encodes one as `stop` would; a
 continuation keeps its earlier part when that file is still there, otherwise it comes back as a
-separate take.
+separate take. A continuation that crashed before its first frame recovers as its earlier
+part alone.
 
 The raw file and the sidecar are deleted by `TakeResult.confirmSaved()`, never by the recorder:
 an m4a that no saved row names is unfindable, so the raw input is the only copy until the caller

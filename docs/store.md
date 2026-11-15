@@ -28,7 +28,9 @@ handed back nor parsed unless asked for. The unselected fields decode as zeros.
 
 A song carries `source` (`file`, the zero value, or `appleMusicReference`) and `storeId`. A reference
 song names an Apple Music track it can only play, so it has no audio `SongFile`; every row written before
-the field existed reads as `file` with no code to migrate it.
+the field existed reads as `file` with no code to migrate it. A song also names its `folder` under the
+songs folder, so the files made for it have one home whether or not it still has a file; a row with none
+reads as empty and the app falls back on the folder of its first file.
 
 ## One writer, short transactions
 
@@ -41,7 +43,8 @@ in `Store+Rules.swift`.
 
 - A moment names a **recording** by its path, not a take (`apps/k7/backend-rs/docs/rehearsal/moments.md`):
   it outlives the take and the file it was cut from.
-- Deleting a take or a recording deletes the markers pinned on it; moments stay on their clips.
+- Deleting a take or a recording deletes the markers pinned on it; moments stay on their clips. An app
+  that cuts no clip deletes a take with its moments and their markers in one transaction.
 - Deleting a moment deletes the markers it owns.
 - Re-filing a recording moves its takes, moments and markers to the new path in one step.
 - Deleting a song deletes its files; its takes stay, detached from the song.
