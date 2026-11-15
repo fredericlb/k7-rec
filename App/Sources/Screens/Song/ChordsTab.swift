@@ -1,0 +1,47 @@
+// The chords tab: the sheet in monospace with its chords coloured, transposed, the sung line highlighted.
+import RehearsalText
+import SwiftUI
+
+struct ChordsTab: View {
+    let text: String
+    let semitones: Int
+    let active: Int?
+    let onTap: (Int) -> Void
+
+    var body: some View {
+        let lines = SongText.displayLines(text, semitones: semitones)
+        let timed = Set(LyricsTiming.byLine(text).map(\.line))
+        FollowedScroll(axes: [.vertical, .horizontal], active: active) {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(lines.enumerated()), id: \.offset) { i, line in
+                    row(line).followed(index: i, active: active, timed: timed, onTap: onTap)
+                }
+            }
+            .font(.system(.body, design: .monospaced))
+            .fixedSize(horizontal: true, vertical: false)
+        }
+    }
+
+    @ViewBuilder private func row(_ line: ParsedLine) -> some View {
+        switch line {
+        case .empty: Text(" ")
+        case .section(let label): Text(label).bold().foregroundStyle(.secondary)
+        case .chords(let t): Text(t).bold().foregroundStyle(Color.accentColor)
+        case .lyrics(let segments): Text(Self.attributed(segments))
+        }
+    }
+
+    static func attributed(_ segments: [Segment]) -> AttributedString {
+        var out = AttributedString()
+        for s in segments {
+            if let chord = s.chord {
+                var c = AttributedString("[\(chord)]")
+                c.foregroundColor = .accentColor
+                c.font = .system(.body, design: .monospaced).bold()
+                out += c
+            }
+            out += AttributedString(s.text)
+        }
+        return out
+    }
+}

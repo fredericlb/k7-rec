@@ -8,14 +8,18 @@ final class AppModel {
     let library: SongLibrary
     let recorder: TakeRecording
     let player: TakePlaying
+    let prefs: SongPrefs
+    let metronome = MetronomeControl()
     var recording = false
     var notice: String?
 
     init(
         library: SongLibrary? = nil,
         recorder: TakeRecording? = nil,
-        player: TakePlaying? = nil
+        player: TakePlaying? = nil,
+        prefs: SongPrefs? = nil
     ) {
+        self.prefs = prefs ?? SongPrefs()
         self.library = library ?? FakeSongLibrary()
         self.recorder = recorder ?? FakeTakeRecorder()
         self.player = player ?? FakeTakePlayer()

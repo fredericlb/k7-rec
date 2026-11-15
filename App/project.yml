@@ -57,6 +57,7 @@ targets:
     sources: [Tests]
     dependencies:
       - target: Rehearsal
+      - package: RehearsalText
       - package: RehearsalAudio
       - package: RehearsalStore
     settings:

@@ -73,7 +73,7 @@ final class StoreTakeRecorder: TakeRecording {
             let result = try await r.stop()
             let row = RehearsalStore.Take(
                 songId: info.songID, title: info.title, createdAt: info.date.timeIntervalSince1970, duration: result.durationSec,
-                envelope: result.envelope.samples.map { Float($0) }, gain: result.gain, audioPath: result.url.lastPathComponent)
+                envelope: result.envelope.samples.map { Float($0) }, gain: 1, audioPath: result.url.lastPathComponent)
             try await store.put(row)
         } catch RecorderError.nothingRecorded {
             failure = nil

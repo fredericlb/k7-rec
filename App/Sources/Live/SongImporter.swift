@@ -54,7 +54,7 @@ struct SongImporter: Sendable {
         return (title.isEmpty ? fallback : title, await value(.commonIdentifierArtist))
     }
 
-    private static func safe(_ name: String) -> String {
+    static func safe(_ name: String) -> String {
         let cleaned = name.replacingOccurrences(of: "[/:\\\\]", with: "-", options: .regularExpression)
         return cleaned.isEmpty ? "Song" : cleaned
     }

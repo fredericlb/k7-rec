@@ -1,0 +1,30 @@
+// The lyrics tab: the words without their timecodes, the sung line highlighted, a tap on a timed line seeks there.
+import RehearsalText
+import SwiftUI
+
+struct LyricsTab: View {
+    let text: String
+    let active: Int?
+    let onTap: (Int) -> Void
+
+    var body: some View {
+        let lines = ChordSheet.parse(text)
+        let timed = Set(LyricsTiming.byLine(text).map(\.line))
+        FollowedScroll(active: active) {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(lines.enumerated()), id: \.offset) { i, line in
+                    row(line).followed(index: i, active: active, timed: timed, onTap: onTap)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private func row(_ line: ParsedLine) -> some View {
+        switch line {
+        case .empty: Text(" ")
+        case .section(let label): Text(label).font(.subheadline.bold()).foregroundStyle(.secondary)
+        case .chords: EmptyView()
+        case .lyrics(let segments): Text(segments.map(\.text).joined()).font(.title3)
+        }
+    }
+}
