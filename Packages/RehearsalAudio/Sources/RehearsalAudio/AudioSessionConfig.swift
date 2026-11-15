@@ -4,11 +4,13 @@
 import AVFoundation
 
 public enum AudioSessionConfig {
-  /// `.playAndRecord`, so a take can be heard back and a click played while the microphone is open.
-  public static func activate() throws {
+  /// `.playAndRecord`; Bluetooth is A2DP, and the hands-free profile only for a take that wants the headset's microphone.
+  public static func activate(recording: Bool = false, headsetInput: Bool = false) throws {
     #if os(iOS)
     let s = AVAudioSession.sharedInstance()
-    try s.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothHFP, .allowBluetoothA2DP])
+    var options: AVAudioSession.CategoryOptions = [.defaultToSpeaker, .allowBluetoothA2DP]
+    if recording && headsetInput { options.insert(.allowBluetoothHFP) }
+    try s.setCategory(.playAndRecord, mode: .default, options: options)
     try s.setActive(true)
     #endif
   }

@@ -4,8 +4,18 @@ import AVFoundation
 import XCTest
 @testable import RehearsalAudio
 
+final class FakeSession: SessionHost, @unchecked Sendable {
+  var onInterruption: (@Sendable (InterruptionEvent) -> Void)?
+  var activations: [(recording: Bool, headsetInput: Bool)] = []
+  var observing = false
+  func observe() { observing = true }
+  func unobserve() { observing = false }
+  func activate(recording: Bool, headsetInput: Bool) throws { activations.append((recording, headsetInput)) }
+  func send(_ e: InterruptionEvent) { onInterruption?(e) }
+}
+
 final class FakeInput: AudioInput, @unchecked Sendable {
-  let sampleRate = 8000.0
+  var sampleRate = 8000.0
   var onLost: (@Sendable () -> Void)?
   var handler: (@Sendable (UnsafeBufferPointer<Float>) -> Void)?
   var running = false
@@ -48,13 +58,15 @@ final class TakeRecorderTests: XCTestCase {
     XCTAssertEqual(rec.elapsedSec, 2, accuracy: 1e-6)
     let r = try await rec.stop()
     XCTAssertEqual(r.durationSec, 2, accuracy: 1e-6)
-    XCTAssertEqual(r.gain, 3, accuracy: 0.01)
+    XCTAssertEqual(r.appliedGain, 3, accuracy: 0.01)
     XCTAssertEqual(r.envelope.samples.count, 10)
     XCTAssertEqual(r.envelope.peak, 0.9, accuracy: 0.02)
     XCTAssertEqual(try peak(of: r.url), 0.9, accuracy: 0.05)
     XCTAssertEqual(AVAudioFile.lengthSec(r.url), 2, accuracy: 0.15)
     XCTAssertEqual(r.url.pathExtension, "m4a")
-    XCTAssertTrue(TakeRecorder.leftovers(in: dir).isEmpty)
+    XCTAssertEqual(TakeRecorder.leftovers(in: dir).count, 1)
+    r.confirmSaved()
+    XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: dir.path), [r.url.lastPathComponent])
   }
 
   func testEventsCarryLevelsAndEnvelopeBuckets() async throws {
@@ -131,5 +143,124 @@ final class TakeRecorderTests: XCTestCase {
     input.push(seconds: 1, amp: 0.5)
     Thread.sleep(forTimeInterval: 0.2)
     XCTAssertEqual(TakeRecorder.leftovers(in: dir).count, 1)
+  }
+
+  func testAnInterruptionPausesWithAReasonAndOnlyResumeContinues() async throws {
+    let input = FakeInput()
+    let session = FakeSession()
+    let rec = TakeRecorder(input: input, directory: dir, session: session)
+    try rec.start()
+    input.push(seconds: 1, amp: 0.5)
+    session.send(.began)
+    XCTAssertEqual(rec.status, .paused)
+    XCTAssertEqual(rec.pauseReason, .interrupted)
+    XCTAssertFalse(input.running)
+    session.send(.ended(shouldResume: true))
+    XCTAssertEqual(rec.status, .paused)
+    let before = session.activations.count
+    try rec.resume()
+    XCTAssertEqual(session.activations.count, before + 1)
+    XCTAssertEqual(rec.status, .recording)
+    XCTAssertNil(rec.pauseReason)
+    input.push(seconds: 1, amp: 0.5)
+    let r = try await rec.stop()
+    XCTAssertEqual(r.durationSec, 2, accuracy: 1e-6)
+    XCTAssertFalse(session.observing)
+    var lost = 0
+    for await e in rec.events where e == .lost { lost += 1 }
+    XCTAssertEqual(lost, 1)
+  }
+
+  func testAMediaServicesResetPausesToo() throws {
+    let input = FakeInput()
+    let session = FakeSession()
+    let rec = TakeRecorder(input: input, directory: dir, session: session)
+    try rec.start()
+    session.send(.mediaServicesReset)
+    XCTAssertEqual(rec.pauseReason, .interrupted)
+  }
+
+  func testAUserPauseIsNotAnInterruption() throws {
+    let rec = TakeRecorder(input: FakeInput(), directory: dir, session: FakeSession())
+    try rec.start()
+    rec.pause()
+    XCTAssertEqual(rec.pauseReason, .user)
+  }
+
+  func testResumeOnAnotherRateEndsTheTakeButKeepsWhatWasRecorded() async throws {
+    let input = FakeInput()
+    let rec = TakeRecorder(input: input, directory: dir, session: FakeSession())
+    try rec.start()
+    input.push(seconds: 1, amp: 0.3)
+    rec.pause()
+    input.sampleRate = 16_000
+    do {
+      try rec.resume()
+      XCTFail("expected rateChanged")
+    } catch RecorderError.rateChanged {}
+    XCTAssertFalse(input.running)
+    XCTAssertEqual(rec.status, .paused)
+    let r = try await rec.stop()
+    XCTAssertEqual(r.durationSec, 1, accuracy: 1e-6)
+    XCTAssertEqual(AVAudioFile.lengthSec(r.url), 1, accuracy: 0.15)
+  }
+
+  func testAFailedStartLeavesTheMicrophoneOff() {
+    let input = FakeInput()
+    let session = FakeSession()
+    let rec = TakeRecorder(input: input, directory: dir.appendingPathComponent("missing"), session: session)
+    XCTAssertThrowsError(try rec.start())
+    XCTAssertFalse(input.running)
+    XCTAssertEqual(rec.status, .idle)
+    XCTAssertFalse(session.observing)
+  }
+
+  func testRecoverFinishesARawTakeAndTheRawFileGoesOnConfirm() async throws {
+    let url = dir.appendingPathComponent("take-x.raw.caf")
+    let file = try RawTakeFile(url: url, sampleRate: 8000)
+    [Float](repeating: 0.3, count: 8000).withUnsafeBufferPointer { file.append($0) }
+    try file.close()
+    let r = try await TakeRecorder.recover(raw: url)
+    XCTAssertEqual(try peak(of: r.url), 0.9, accuracy: 0.05)
+    XCTAssertEqual(r.durationSec, 1, accuracy: 1e-6)
+    XCTAssertEqual(r.appliedGain, 3, accuracy: 0.01)
+    XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
+    r.confirmSaved()
+    XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
+  }
+
+  func testACrashedContinuationRecoversWithItsEarlierPart() async throws {
+    let input = FakeInput()
+    var rec: TakeRecorder? = TakeRecorder(input: input, directory: dir, session: FakeSession())
+    try rec!.start()
+    input.push(seconds: 1, amp: 0.2)
+    let a = try await rec!.stop()
+    a.confirmSaved()
+    rec = TakeRecorder(input: input, directory: dir, session: FakeSession())
+    try rec!.start(extending: ExistingTake(url: a.url, envelope: a.envelope))
+    input.push(seconds: 1, amp: 0.1)
+    rec = nil
+    try await Task.sleep(nanoseconds: 200_000_000)
+    let raw = try XCTUnwrap(TakeRecorder.leftovers(in: dir).first)
+    let r = try await TakeRecorder.recover(raw: raw)
+    XCTAssertEqual(r.offsetSec, a.durationSec, accuracy: 1e-6)
+    XCTAssertEqual(r.envelope.samples.count, 10)
+    XCTAssertEqual(Array(r.envelope.samples[0..<5]), a.envelope.samples)
+    r.confirmSaved()
+    XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: dir.path).sorted(), [a.url.lastPathComponent, r.url.lastPathComponent].sorted())
+  }
+
+  func testContinuingAtAnotherRateJoinsWithoutLosingTheTail() async throws {
+    let input = FakeInput()
+    let first = TakeRecorder(input: input, directory: dir, session: FakeSession())
+    try first.start()
+    input.push(seconds: 1, amp: 0.3)
+    let a = try await first.stop()
+    input.sampleRate = 16_000
+    let second = TakeRecorder(input: input, directory: dir, session: FakeSession())
+    try second.start(extending: ExistingTake(url: a.url, envelope: a.envelope))
+    input.push(seconds: 1, amp: 0.3)
+    let b = try await second.stop()
+    XCTAssertEqual(AVAudioFile.lengthSec(b.url), 2, accuracy: 0.03)
   }
 }

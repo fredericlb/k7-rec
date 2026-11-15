@@ -66,11 +66,11 @@ final class PlaybackTests: XCTestCase {
     XCTAssertEqual(whole, parts)
   }
 
-  private func offlinePlayer(seconds: Double) throws -> (TakePlayer, AVAudioEngine) {
+  private func offlinePlayer(seconds: Double, session: SessionHost = FakeSession()) throws -> (TakePlayer, AVAudioEngine) {
     let url = try TestAudio.wav(seconds: seconds, amp: 0.5)
     let engine = AVAudioEngine()
     try engine.enableManualRenderingMode(.offline, format: AVAudioFormat(standardFormatWithSampleRate: 8000, channels: 2)!, maximumFrameCount: 4096)
-    return (try TakePlayer(url: url, engine: engine, coordinator: PlaybackCoordinator()), engine)
+    return (try TakePlayer(url: url, engine: engine, coordinator: PlaybackCoordinator(), session: session), engine)
   }
 
   private func render(_ engine: AVAudioEngine, frames: AVAudioFrameCount) throws {
@@ -85,11 +85,54 @@ final class PlaybackTests: XCTestCase {
     XCTAssertEqual(p.positionSec, 0.5, accuracy: 0.1)
     p.pause()
     let held = p.positionSec
-    try render(e, frames: 2000)
+    XCTAssertFalse(e.isRunning)
     XCTAssertEqual(p.positionSec, held, accuracy: 1e-9)
     p.seek(to: 1.5)
     XCTAssertEqual(p.positionSec, 1.5, accuracy: 1e-3)
     XCTAssertEqual(p.state, .paused)
+  }
+
+  func testAnInterruptionPausesThePlayerWhereItStood() throws {
+    let session = FakeSession()
+    let (p, e) = try offlinePlayer(seconds: 2, session: session)
+    try p.play()
+    try render(e, frames: 4000)
+    session.send(.began)
+    XCTAssertEqual(p.state, .paused)
+    XCTAssertEqual(p.positionSec, 0.5, accuracy: 0.1)
+    try p.play()
+    XCTAssertEqual(p.state, .playing)
+  }
+
+  func testAnEngineReconfigurationPausesThePlayer() async throws {
+    let (p, e) = try offlinePlayer(seconds: 2)
+    try p.play()
+    try render(e, frames: 2000)
+    NotificationCenter.default.post(name: .AVAudioEngineConfigurationChange, object: e)
+    try await Task.sleep(nanoseconds: 100_000_000)
+    XCTAssertEqual(p.state, .paused)
+  }
+
+  func testAnInterruptionStopsTheMetronome() throws {
+    let session = FakeSession()
+    let m = Metronome(session: session)
+    try m.start(bpm: 120, startSec: 0)
+    XCTAssertNotNil(m.state)
+    session.send(.began)
+    XCTAssertNil(m.state)
+  }
+
+  func testNoBeatIsReportedAfterStop() async throws {
+    let m = Metronome(session: FakeSession())
+    var beats = 0
+    m.onBeat = { _ in beats += 1 }
+    try m.start(bpm: 600, startSec: 0)
+    try await Task.sleep(nanoseconds: 400_000_000)
+    m.stop()
+    let atStop = beats
+    try await Task.sleep(nanoseconds: 400_000_000)
+    XCTAssertGreaterThan(atStop, 0)
+    XCTAssertEqual(beats, atStop)
   }
 
   func testPlayerLoopsItsRange() throws {
@@ -117,9 +160,23 @@ final class PlaybackTests: XCTestCase {
     XCTAssertEqual(p.positionSec, 0.6, accuracy: 1e-3)
   }
 
-  func testGainIsCappedAtTheEQsRange() {
-    XCTAssertEqual(TakePlayer.decibels(1), 0, accuracy: 1e-6)
-    XCTAssertEqual(TakePlayer.decibels(2), 6.02, accuracy: 0.01)
-    XCTAssertEqual(TakePlayer.decibels(32), 24)
+  func testGainReachesTheRecordersCapThroughTwoEQs() {
+    XCTAssertEqual(TakePlayer.decibels(1).0, 0, accuracy: 1e-6)
+    XCTAssertEqual(TakePlayer.decibels(2).0, 6.02, accuracy: 0.01)
+    let top = TakePlayer.decibels(Gain.maxGain)
+    XCTAssertEqual(Double(top.0 + top.1), 20 * log10(Gain.maxGain), accuracy: 0.01)
+    XCTAssertEqual(TakePlayer.decibels(1000).1, 24)
+  }
+
+  func testAGainOf32IsHeardAt32() throws {
+    let url = try TestAudio.wav(seconds: 1, amp: 0.02)
+    let engine = AVAudioEngine()
+    try engine.enableManualRenderingMode(.offline, format: AVAudioFormat(standardFormatWithSampleRate: 8000, channels: 1)!, maximumFrameCount: 4096)
+    let p = try TakePlayer(url: url, gain: Gain.maxGain, engine: engine, coordinator: PlaybackCoordinator(), session: FakeSession())
+    try p.play()
+    let buf = AVAudioPCMBuffer(pcmFormat: engine.manualRenderingFormat, frameCapacity: 4096)!
+    XCTAssertEqual(try engine.renderOffline(4096, to: buf), .success)
+    let peak = UnsafeBufferPointer(start: buf.floatChannelData![0], count: Int(buf.frameLength)).map { abs($0) }.max()!
+    XCTAssertEqual(peak, 0.64, accuracy: 0.03)
   }
 }

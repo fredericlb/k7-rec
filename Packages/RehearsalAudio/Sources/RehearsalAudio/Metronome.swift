@@ -1,5 +1,5 @@
 // Metronome.swift: a click on the audio clock, a port of useMetronome.ts (a click every beat, an accent each bar).
-// What reads wrong: a beat callback fires from the main queue just after its buffer, not at the exact frame.
+// What reads wrong: a beat callback is timed from the session's latency, so it is close to the click, not exact.
 
 import AVFoundation
 
@@ -55,40 +55,86 @@ public struct ClickGenerator: Sendable {
   }
 }
 
+/// The generator the render block owns; only the audio thread touches it once the engine runs.
+private final class GeneratorBox: @unchecked Sendable {
+  var generator: ClickGenerator
+  init(_ g: ClickGenerator) { generator = g }
+}
+
 @MainActor
 public final class Metronome {
   public private(set) var state: MetronomeState?
-  /// Called as each click sounds, `downbeat` on the first of a bar.
+  /// Called as each click reaches the speaker, `downbeat` on the first of a bar; never after `stop()`.
   public var onBeat: ((Bool) -> Void)?
   private var engine: AVAudioEngine?
+  private let session: SessionHost
+  private var configObserver: NSObjectProtocol?
+  private var runID = 0
 
-  public init() {}
+  public init(session: SessionHost = SystemSession()) {
+    self.session = session
+    session.onInterruption = { [weak self] _ in MainActor.assumeIsolated { self?.stop() } }
+  }
 
   public func start(bpm: Double, startSec: Double) throws {
     stop()
     guard bpm > 0 else { return }
-    try AudioSessionConfig.activate()
+    try session.activate(recording: false, headsetInput: false)
+    session.observe()
     let engine = AVAudioEngine()
     let rate = engine.outputNode.outputFormat(forBus: 0).sampleRate
-    var gen = ClickGenerator(bpm: bpm, sampleRate: rate > 0 ? rate : 44_100)
-    let format = AVAudioFormat(standardFormatWithSampleRate: rate > 0 ? rate : 44_100, channels: 1)!
-    let src = AVAudioSourceNode(format: format) { [weak self] _, _, frames, abl in
-      let list = UnsafeMutableAudioBufferListPointer(abl)
-      guard let p = list.first?.mData?.assumingMemoryBound(to: Float.self) else { return noErr }
-      let beats = gen.render(into: p, frames: Int(frames))
-      for b in beats { DispatchQueue.main.async { MainActor.assumeIsolated { self?.onBeat?(b.downbeat) } } }
-      return noErr
+    let sampleRate = rate > 0 ? rate : 44_100
+    let run = runID
+    let lead = Self.outputLead()
+    let report: @Sendable (Bool, Double) -> Void = { [weak self] downbeat, delay in
+      DispatchQueue.main.asyncAfter(deadline: .now() + lead + delay) {
+        MainActor.assumeIsolated {
+          guard let self, self.runID == run else { return }
+          self.onBeat?(downbeat)
+        }
+      }
     }
+    let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
+    let src = AVAudioSourceNode(format: format, renderBlock: Self.makeRender(ClickGenerator(bpm: bpm, sampleRate: sampleRate), sampleRate, report))
     engine.attach(src)
     engine.connect(src, to: engine.mainMixerNode, format: format)
+    configObserver = NotificationCenter.default.addObserver(
+      forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
+    ) { [weak self] _ in MainActor.assumeIsolated { self?.stop() } }
     try engine.start()
     self.engine = engine
     state = MetronomeState(bpm: bpm, startSec: startSec)
   }
 
   public func stop() {
+    runID += 1
+    session.unobserve()
+    if let o = configObserver { NotificationCenter.default.removeObserver(o) }
+    configObserver = nil
     engine?.stop()
     engine = nil
     state = nil
+  }
+
+  /// How long after rendering a click reaches the speaker: the IO buffer plus the output's own latency.
+  private static func outputLead() -> Double {
+    #if os(iOS)
+    let s = AVAudioSession.sharedInstance()
+    return s.outputLatency + s.ioBufferDuration
+    #else
+    return 0
+    #endif
+  }
+
+  private nonisolated static func makeRender(
+    _ generator: ClickGenerator, _ rate: Double, _ report: @escaping @Sendable (Bool, Double) -> Void
+  ) -> AVAudioSourceNodeRenderBlock {
+    let box = GeneratorBox(generator)
+    return { _, _, frames, abl in
+      let list = UnsafeMutableAudioBufferListPointer(abl)
+      guard let p = list.first?.mData?.assumingMemoryBound(to: Float.self) else { return noErr }
+      for b in box.generator.render(into: p, frames: Int(frames)) { report(b.downbeat, Double(b.frame) / rate) }
+      return noErr
+    }
   }
 }

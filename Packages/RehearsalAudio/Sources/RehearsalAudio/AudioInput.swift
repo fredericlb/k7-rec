@@ -13,9 +13,15 @@ public protocol AudioInput: AnyObject, Sendable {
 
 /// The device's microphone through an AVAudioEngine tap, mixed down to mono.
 public final class EngineInput: AudioInput, @unchecked Sendable {
-  private let engine = AVAudioEngine()
+  private let lock = NSLock()
+  private var engine = AVAudioEngine()
   private var observer: NSObjectProtocol?
-  public var onLost: (@Sendable () -> Void)?
+  private var lost: (@Sendable () -> Void)?
+
+  public var onLost: (@Sendable () -> Void)? {
+    get { lock.withLock { lost } }
+    set { lock.withLock { lost = newValue } }
+  }
 
   public init() {}
 
@@ -43,6 +49,7 @@ public final class EngineInput: AudioInput, @unchecked Sendable {
     observer = NotificationCenter.default.addObserver(
       forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil
     ) { [weak self] _ in self?.onLost?() }
+    defer { if engine.isRunning == false { stop() } }
     engine.prepare()
     try engine.start()
   }
@@ -52,5 +59,7 @@ public final class EngineInput: AudioInput, @unchecked Sendable {
     observer = nil
     engine.inputNode.removeTap(onBus: 0)
     engine.stop()
+    // A fresh engine per run: one that lived through a media-services reset is unusable.
+    engine = AVAudioEngine()
   }
 }
