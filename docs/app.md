@@ -108,3 +108,22 @@ file picker on iCloud files are still checked by hand.
   "playing" over silence.
 - **A button a thumb must hit is 44 pt**: the song header's and the Takes rows' play buttons had the
   glyph's 14 pt as their target. `UITests/PlayTests.swift` taps the real button on the simulator.
+
+## Moments and markers
+
+- **Detection is a button on each visit**, off when a page opens and never kept
+  (`packages/ui-rehearsal/docs/recordings.md`). `MomentDetector` runs over the take's stored envelope;
+  the floor is an absolute level (15% of the peak until moved), the silence 0.5 to 10 s, and every move of
+  a slider runs the detector again in memory. `Logic/TakeMoments.swift` holds that state so tests reach it
+  without a view.
+- **A recording is its take's file name**, as the store's rules name it. A moment keeps the slice of the
+  envelope it covers; there is no clip, no consolidation and no sharing, so a moment plays as a span of
+  the take: a detected span once, a saved moment in a loop.
+- **A moment cannot outlive its take here.** The store lets a moment stay on its clip when its recording
+  goes; the app cuts no clip, so deleting a take deletes its moments (and their markers) as well, and the
+  confirmation says so.
+- **Pins are the recording's own** (`momentId` empty): named at the playhead, tap to seek, deleted with
+  the take by the store's rule. A moment's own pins are not offered.
+- **A saved span is not saved twice**; an empty title becomes "Moment m:ss", an empty pin name "Marker".
+- **`UITests/MomentsShot.swift` takes screenshots** of the page when `TEST_RUNNER_SHOT_DIR` is set, over a
+  take seeded by the debug launch argument `-SeedTake <audio path>`; it skips otherwise.

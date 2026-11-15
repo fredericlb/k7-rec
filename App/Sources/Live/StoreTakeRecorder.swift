@@ -104,7 +104,9 @@ final class StoreTakeRecorder: TakeRecording {
 
     func delete(id: String) async {
         guard let row = try? await store.get(RehearsalStore.Take.self, id) else { return }
-        try? await store.delete(RehearsalStore.Take.self, id)
+        try? await store.deleteTake(id)
+        // The app cuts no clip, so a moment cannot outlive the file it names (docs/app.md).
+        for m in (try? await store.moments(of: row.audioPath)) ?? [] { try? await store.deleteMoment(m.id) }
         try? FileManager.default.removeItem(at: folder.appendingPathComponent(row.audioPath))
     }
 

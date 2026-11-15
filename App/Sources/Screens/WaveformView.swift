@@ -8,12 +8,14 @@ struct WaveformView: View {
     let playing: Bool
     let position: () -> TimeInterval
     let onSeek: (TimeInterval) -> Void
+    var marks: WaveformMarks?
     @State private var seeks = 0
 
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 WaveformBars(samples: samples).equatable()
+                if let marks { marks.equatable() }
                 PlayheadLayer(playing: playing, duration: duration, width: geo.size.width, seeks: seeks, position: position)
             }
             .contentShape(Rectangle())

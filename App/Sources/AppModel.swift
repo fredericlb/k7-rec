@@ -9,6 +9,7 @@ final class AppModel {
     let library: SongLibrary
     let recorder: TakeRecording
     let player: TakePlaying
+    let moments: MomentKeeping
     let prefs: SongPrefs
     let metronome = MetronomeControl()
     var recording = false
@@ -19,6 +20,7 @@ final class AppModel {
         library: SongLibrary? = nil,
         recorder: TakeRecording? = nil,
         player: TakePlaying? = nil,
+        moments: MomentKeeping? = nil,
         prefs: SongPrefs? = nil,
         deactivate: @escaping () -> Void = { AudioSessionConfig.deactivate() }
     ) {
@@ -27,6 +29,7 @@ final class AppModel {
         self.library = library ?? FakeSongLibrary()
         self.recorder = recorder ?? FakeTakeRecorder()
         self.player = player ?? FakeTakePlayer()
+        self.moments = moments ?? FakeMomentKeeper()
         self.player.onIdle = { [weak self] in self?.restSession() }
         metronome.onStop = { [weak self] in self?.restSession() }
     }
@@ -49,7 +52,7 @@ final class AppModel {
         let model = AppModel(
             library: StoreSongLibrary(store: store, songsFolder: paths.songs),
             recorder: StoreTakeRecorder(store: store, takesFolder: paths.takes, headsetInput: { prefs.headsetInput }),
-            player: PackagePlayer(), prefs: prefs)
+            player: PackagePlayer(), moments: StoreMoments(store: store), prefs: prefs)
         model.notice = failure
         return model
     }
@@ -86,11 +89,22 @@ final class AppModel {
     /// Plays or pauses `id`, loading `url` first when another file is loaded.
     func togglePlay(id: String, url: URL) {
         player.load(id: id, url: url)
+        player.setRange(nil, loops: false)
         player.toggle()
+    }
+
+    /// Plays `span` of `id`, looped or once; a second tap on the span that plays pauses it.
+    func playSpan(id: String, url: URL, span: ClosedRange<TimeInterval>, loops: Bool) {
+        player.load(id: id, url: url)
+        if player.isPlaying, player.range == span { player.toggle(); return }
+        player.setRange(span, loops: loops)
+        player.seek(to: span.lowerBound)
+        if !player.isPlaying { player.toggle() }
     }
 
     func seek(id: String, url: URL, to seconds: TimeInterval) {
         player.load(id: id, url: url)
+        player.setRange(nil, loops: false)
         player.seek(to: seconds)
     }
 }

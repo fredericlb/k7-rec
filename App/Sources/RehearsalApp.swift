@@ -16,6 +16,9 @@ struct RehearsalApp: App {
     // Debug builds import the paths of `-ImportOnLaunch a:b` so the simulator needs no picker (docs/app.md).
     private func importFromLaunchArguments() async {
         #if DEBUG
+        if let seed = UserDefaults.standard.string(forKey: "SeedTake"), let rec = model.recorder as? StoreTakeRecorder {
+            await rec.seed(from: URL(fileURLWithPath: seed))
+        }
         guard let list = UserDefaults.standard.string(forKey: "ImportOnLaunch") else { return }
         await model.importURLs(list.split(separator: ":").map { URL(fileURLWithPath: String($0)) })
         #endif

@@ -15,6 +15,10 @@ protocol TakePlaying: AnyObject {
     func unload()
     /// Called when playback stops by itself or by a pause: nothing of the player is audible any more.
     var onIdle: (() -> Void)? { get set }
+    /// The span being played, nil for the whole file.
+    var range: ClosedRange<TimeInterval>? { get }
+    /// Plays only `range`, looped or once; nil restores the whole file.
+    func setRange(_ range: ClosedRange<TimeInterval>?, loops: Bool)
 }
 
 @MainActor
@@ -23,6 +27,9 @@ final class FakeTakePlayer: TakePlaying {
     private(set) var isPlaying = false
     private(set) var position: TimeInterval = 0
     var onIdle: (() -> Void)?
+    private(set) var range: ClosedRange<TimeInterval>?
+
+    func setRange(_ range: ClosedRange<TimeInterval>?, loops: Bool) { self.range = range }
 
     func load(id: String, url: URL) {
         if loadedID != id { position = 0; isPlaying = false }

@@ -7,6 +7,7 @@ import RehearsalAudio
 final class PackagePlayer: TakePlaying {
     private(set) var loadedID: String?
     private(set) var isPlaying = false
+    private(set) var range: ClosedRange<TimeInterval>?
     @ObservationIgnored private var player: TakePlayer?
     @ObservationIgnored var onIdle: (() -> Void)?
 
@@ -27,11 +28,17 @@ final class PackagePlayer: TakePlaying {
         if isPlaying { player.pause(); isPlaying = false } else { isPlaying = (try? player.play()) != nil }
     }
 
+    func setRange(_ range: ClosedRange<TimeInterval>?, loops: Bool) {
+        guard range != nil || self.range != nil else { return }
+        player?.setRange(range, loops: loops)
+        self.range = range
+    }
+
     func seek(to seconds: TimeInterval) { player?.seek(to: seconds) }
 
     func unload() {
         player?.stop()
         if isPlaying { onIdle?() }
-        (player, loadedID, isPlaying) = (nil, nil, false)
+        (player, loadedID, isPlaying, range) = (nil, nil, false, nil)
     }
 }
