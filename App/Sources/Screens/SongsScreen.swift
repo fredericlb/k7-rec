@@ -6,9 +6,10 @@ struct SongsScreen: View {
     @Environment(AppModel.self) private var model
     @State private var picking = false
     @State private var pickFolder = false
+    @State private var path: [Song] = []
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             List(model.library.songs) { song in
                 NavigationLink(value: song) {
                     VStack(alignment: .leading) {
@@ -22,6 +23,7 @@ struct SongsScreen: View {
                     ContentUnavailableView("No songs yet", systemImage: "music.note.list", description: Text("Import a song folder or an audio file with +."))
                 }
             }
+            .onChange(of: model.library.songs.count) { if DebugLaunch.openFirst, path.isEmpty, let s = model.library.songs.first { path = [s] } }
             .navigationTitle("Songs")
             .navigationDestination(for: Song.self) { SongScreen(song: $0) }
             .toolbar {

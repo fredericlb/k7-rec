@@ -12,13 +12,12 @@ struct ChordsTab: View {
         let lines = SongText.displayLines(text, semitones: semitones)
         let timed = Set(LyricsTiming.byLine(text).map(\.line))
         FollowedScroll(axes: [.vertical, .horizontal], active: active) {
-            LazyVStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(lines.enumerated()), id: \.offset) { i, line in
-                    row(line).followed(index: i, active: active, timed: timed, onTap: onTap)
+                    row(line).fixedSize(horizontal: true, vertical: false).followed(index: i, active: active, timed: timed, onTap: onTap)
                 }
             }
             .font(.system(.body, design: .monospaced))
-            .fixedSize(horizontal: true, vertical: false)
         }
     }
 

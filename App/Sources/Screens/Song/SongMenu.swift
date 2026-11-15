@@ -15,7 +15,7 @@ struct SongMenu: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Added \(song.added.formatted(date: .abbreviated, time: .omitted))").font(.caption).foregroundStyle(.secondary)
             HStack {
-                Label("Metronome", systemImage: "metronome")
+                Label("Metronome", systemImage: "metronome").fixedSize()
                 Spacer()
                 stepper(minus: { model.metronome.step(-1) }, plus: { model.metronome.step(1) }, label: "\(Int(model.metronome.bpm)) bpm")
                 Button { model.metronome.toggle() } label: { Image(systemName: model.metronome.running ? "stop.fill" : "play.fill") }
@@ -38,7 +38,7 @@ struct SongMenu: View {
             Button("Record a take", systemImage: "record.circle") { record() }
         }
         .padding()
-        .frame(minWidth: 300)
+        .frame(width: 400)
     }
 
     private func has(_ kind: TextKind) -> Bool {
@@ -52,7 +52,7 @@ struct SongMenu: View {
     private func stepper(minus: @escaping () -> Void, plus: @escaping () -> Void, label: String) -> some View {
         HStack(spacing: 6) {
             Button(action: minus) { Image(systemName: "minus") }.buttonStyle(.bordered)
-            Text(label).monospacedDigit().frame(minWidth: 56)
+            Text(label).monospacedDigit().fixedSize().frame(minWidth: 70)
             Button(action: plus) { Image(systemName: "plus") }.buttonStyle(.bordered)
         }
     }

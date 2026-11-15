@@ -35,8 +35,12 @@ struct SongScreen: View {
                     .padding(.horizontal)
             }
             HStack {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack { ForEach(tabs, id: \.self) { tabButton($0) } }
+                ScrollViewReader { proxy in
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack { ForEach(tabs, id: \.self) { tabButton($0).id($0) } }
+                    }
+                    .onChange(of: current) { _, tab in withAnimation { proxy.scrollTo(tab) } }
+                    .onAppear { proxy.scrollTo(current) }
                 }
                 tabButton(.info, icon: "info.circle")
             }
@@ -45,7 +49,12 @@ struct SongScreen: View {
             content.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .navigationBarTitleDisplayMode(.inline)
-        .task { wave = await model.library.wave(of: live) }
+        .task {
+            if let t = DebugLaunch.tab { selected = t }
+            if let at = DebugLaunch.seek, let url = live.audioURL { model.seek(id: playID, url: url, to: at); refreshActive() }
+            menuOpen = DebugLaunch.menu
+            wave = await model.library.wave(of: live)
+        }
         .task(id: playing) { await follow() }
         .onChange(of: current) { refreshActive() }
         .sheet(item: $editing) { kind in TextEditorSheet(song: live, kind: kind) }

@@ -30,7 +30,7 @@ final class RecordingTests: XCTestCase {
         XCTAssertEqual(rows[0].songId, "s1")
         XCTAssertEqual(rows[0].duration, 2, accuracy: 0.05)
         XCTAssertEqual(rows[0].envelope.count, 10)
-        XCTAssertEqual(rows[0].gain, 0.9 / 0.2, accuracy: 0.05)
+        XCTAssertEqual(rows[0].gain, 1, "the applied gain is baked into the file")
         XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appendingPathComponent(rows[0].audioPath).path))
         await settle { !rec.takes.isEmpty }
         XCTAssertEqual(rec.takes.map(\.title), ["Blue Monday"])

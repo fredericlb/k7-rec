@@ -30,7 +30,7 @@ struct ChordDiagramView: View {
     var body: some View {
         Canvas { ctx, size in
             let strings = max(fingering.frets.count, 2), frets = 5
-            let left = 14.0, top = 16.0, w = size.width - left - 4, h = size.height - top - 4
+            let left = 14.0, top = 16.0, w = size.width - left - 9, h = size.height - top - 4
             let dx = w / Double(strings - 1), dy = h / Double(frets)
             func x(_ s: Int) -> Double { left + Double(s) * dx }
             func y(_ f: Int) -> Double { top + Double(f) * dy }

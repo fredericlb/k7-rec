@@ -51,3 +51,40 @@ interruption by a call, the system file picker's security-scoped URLs from iClou
 - **Import is the system document picker** (`fileImporter`) for folders and audio files; it hands the
   URLs to `SongLibrary.importURLs` and does nothing else. Security-scoped access belongs to the real library.
 - **Icons are SF Symbols.**
+
+## The song screen
+
+- **One file per tab** under `App/Sources/Screens/Song/`; `SongScreen` holds only the header, the tab row
+  and the state the tabs share. The pure text logic (transposed lines, the sung line, tab grids, LRC,
+  re-timing) is `Logic/SongText.swift`, so tests reach it without a view.
+- **The screen reads the live song by id**: the pushed value is a snapshot, and an edit must show at once.
+- **The sung line is polled, not observed**: a 150 ms loop runs only while the song plays and writes the
+  line only when it changes, so the lists redraw on a line change and not on every frame. A tap on a timed
+  line seeks `lyrics lead` seconds early (1 s, kept in UserDefaults, a Settings stepper) and starts playing,
+  as the web does.
+- **Transposition is kept per song in UserDefaults**, folded into -5...+6. It moves what is read: the
+  chords and lyrics tabs and the diagrams; the files are never rewritten.
+- **Chords and tab are monospace, scrolled sideways, never wrapped**, since alignment is the data. The
+  sideways scroll is nested in the vertical one: a two-axis `ScrollView` centres short content.
+- **The popover, not a menu, holds the ⋮ controls** (`.presentationCompactAdaptation(.popover)`), and the
+  metronome lives in `AppModel`, so its click outlives the popover.
+- **Texts are plain files of the song folder.** Saving writes the file, then rewrites the `SongFile` row in
+  one transaction; an emptied text removes both. After a lyrics edit, chords that already carry timecodes
+  are re-timed onto the new lyrics with `LRC.mergeTimedSheet`; untimed chords are left alone.
+- **Sheets** are copied into `sheets/` under a unique name and ordered by `position`, which is the
+  sidecar's order for imported ones; PDFs go through PDFKit, images through a zooming scroll view.
+- **Tags are edited on the row only.** `song.yaml` is never rewritten, so re-importing the folder restores
+  the sidecar's tags.
+- **LRC import** merges a picked `.lrc` into the lyrics with `LRC.merge`, writing `{{MM:SS.cc}}` codes as the web does.
+
+## Chord diagrams
+
+`Logic/ChordDiagrams.swift` is the only file that reads `Resources/ChordsDB/guitar.json`, the guitar data of
+`@tombatossals/chords-db` (MIT, licence beside it). The JSON is cut to what is drawn: no MIDI, and only each
+chord's first fingering. The lookup follows `chordDiagram.ts` (`ROOT_TO_DB`, exact quality, slash form, bare
+triad) and answers nil for what is not a chord; a card with no diagram shows its name alone.
+
+## Device only (M3)
+
+Nothing new needs a device; what is audible, the metronome click through a speaker or Bluetooth, and the
+file picker on iCloud files are still checked by hand.
