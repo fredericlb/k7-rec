@@ -34,6 +34,20 @@ extension Store {
         }
     }
 
+    /// Deletes a take with its recording's pins, moments and their markers, in one transaction.
+    public func deleteTakeWithMoments(_ id: String) async throws {
+        try await write { tx in
+            guard let take = try tx.get(Take.self, id) else { return }
+            try tx.delete(Take.self, id)
+            guard !take.audioPath.isEmpty else { return }
+            try Self.deleteRecordingPins(tx, take.audioPath)
+            for m in try tx.list(Query<Moment>(where: [Filter("recordingPath", equals: .text(take.audioPath))])) {
+                for k in try tx.list(Query<Marker>(where: [Filter("momentId", equals: .text(m.id))])) { try tx.delete(Marker.self, k.id) }
+                try tx.delete(Moment.self, m.id)
+            }
+        }
+    }
+
     /// Deletes a recording: every take that saved it, with its pins. Moments stay.
     public func deleteRecording(_ path: String) async throws {
         try await write { tx in

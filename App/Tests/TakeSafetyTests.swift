@@ -117,4 +117,60 @@ final class TakeSafetyTests: XCTestCase {
 
         XCTAssertEqual(rested, 1)
     }
+
+    func testACrashAfterARateChangeRecoversOneTakeNotTwo() async throws {
+        let box = InputBox()
+        let folder = try tempFolder()
+        let store = try Store()
+        let rec = StoreTakeRecorder(store: store, takesFolder: folder, makeInput: { box.make() }, makeSession: { ScriptedSession() }, askMicrophone: { true })
+        _ = await rec.start(songID: "", title: "Headset")
+        box.current.push(seconds: 1, amp: 0.3)
+        rec.pause()
+        box.rate = 16_000
+        box.current.sampleRate = 16_000
+        await rec.resume()
+        box.current.push(seconds: 1, amp: 0.3)
+        try await Task.sleep(nanoseconds: 300_000_000)
+
+        let after = StoreTakeRecorder(store: store, takesFolder: folder, askMicrophone: { true })
+        let saved = await after.recoverLeftovers()
+
+        XCTAssertEqual(saved, 1)
+        let rows = try await store.list(Query<RehearsalStore.Take>())
+        XCTAssertEqual(rows.count, 1)
+        XCTAssertEqual(rows[0].duration, 2, accuracy: 0.1)
+    }
+
+    func testAFailureIsForgottenWhenTheNextResumeSucceeds() async throws {
+        let session = ScriptedSession()
+        let rec = StoreTakeRecorder(store: try Store(), takesFolder: try tempFolder(), makeInput: { ScriptedInput() }, makeSession: { session }, askMicrophone: { true })
+        _ = await rec.start(songID: "", title: "a")
+        rec.pause()
+        session.failing = true
+        await rec.resume()
+        XCTAssertNotNil(rec.failure)
+        session.failing = false
+
+        await rec.resume()
+
+        XCTAssertNil(rec.failure)
+    }
+
+    func testAStartWhileRecordingSaysNothingAboutTheMicrophone() async throws {
+        let rec = StoreTakeRecorder(store: try Store(), takesFolder: try tempFolder(), makeInput: { ScriptedInput() }, askMicrophone: { true })
+        _ = await rec.start(songID: "", title: "a")
+        let again = await rec.start(songID: "", title: "b")
+        XCTAssertFalse(again)
+        XCTAssertNil(rec.failure)
+    }
+
+    func testARawTakeThatCannotBeEncodedIsCountedNotLost() async throws {
+        let folder = try tempFolder()
+        try Data("not audio".utf8).write(to: folder.appendingPathComponent("take-bad.raw.caf"))
+        let rec = StoreTakeRecorder(store: try Store(), takesFolder: folder, askMicrophone: { true })
+        let saved = await rec.recoverLeftovers()
+        XCTAssertEqual(saved, 0)
+        XCTAssertEqual(rec.unrecovered, 1)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appendingPathComponent("take-bad.raw.caf").path))
+    }
 }

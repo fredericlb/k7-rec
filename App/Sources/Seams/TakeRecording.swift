@@ -24,6 +24,10 @@ protocol TakeRecording: AnyObject {
     var pauseCause: PauseCause? { get }
     /// Why the last take or start failed, nil when it did not.
     var failure: String? { get }
+    /// True from a successful start until the take is stopped or lost to a failed continuation.
+    var isRecording: Bool { get }
+    /// How many raw takes the last recovery could not finish; they stay in the Takes folder.
+    var unrecovered: Int { get }
     /// Newest first; a listing carries no envelope, `take(id:)` does.
     var takes: [Take] { get }
     /// Returns false when the microphone is refused or the input fails to open.
@@ -45,6 +49,8 @@ final class FakeTakeRecorder: TakeRecording {
     private(set) var paused = false
     private(set) var pauseCause: PauseCause?
     private(set) var failure: String?
+    var isRecording: Bool { startedAt != nil }
+    var unrecovered: Int { 0 }
     private(set) var takes: [Take] = [
         Take(id: "t1", title: "Blue Monday Jam", date: .now.addingTimeInterval(-86_400), duration: 213, envelope: Wave.fake.samples),
         Take(id: "t2", title: "Slow Waltz", date: .now.addingTimeInterval(-3_600), duration: 95, envelope: Wave.fake.samples),

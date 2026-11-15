@@ -83,12 +83,14 @@ final class AppModel {
     func resumeTake() async {
         await recorder.resume()
         notice = recorder.failure ?? notice
+        if !recorder.isRecording { recording = false; restSession() }
     }
 
     /// At launch: raw takes a crash left become saved takes.
     func recoverTakes() async {
         let n = await recorder.recoverLeftovers()
         if n > 0 { notice = n == 1 ? "A take from the last session was recovered." : "\(n) takes from the last session were recovered." }
+        if recorder.unrecovered > 0 { notice = "\(recorder.unrecovered) unfinished takes could not be recovered; they stay in the Takes folder." }
     }
 
     func importURLs(_ urls: [URL]) async {

@@ -41,9 +41,13 @@ final class ScriptedInput: AudioInput, @unchecked Sendable {
 final class ScriptedSession: SessionHost, @unchecked Sendable {
     var onInterruption: (@Sendable (InterruptionEvent) -> Void)?
     private(set) var headsetAsked: [Bool] = []
+    var failing = false
     func observe() {}
     func unobserve() {}
-    func activate(recording: Bool, headsetInput: Bool) throws { headsetAsked.append(headsetInput) }
+    func activate(recording: Bool, headsetInput: Bool) throws {
+        if failing { throw CocoaError(.fileWriteUnknown) }
+        headsetAsked.append(headsetInput)
+    }
     func send(_ e: InterruptionEvent) { onInterruption?(e) }
 }
 

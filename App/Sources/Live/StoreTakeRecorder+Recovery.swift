@@ -9,16 +9,18 @@ extension StoreTakeRecorder {
     @discardableResult
     func recoverLeftovers() async -> Int {
         guard !isRecording else { return 0 }
-        var saved = 0
+        var (saved, failed) = (0, 0)
         for raw in TakeRecorder.leftovers(in: folder) {
             let attributes = (try? FileManager.default.attributesOfItem(atPath: raw.path)) ?? [:]
             let started = (attributes[.creationDate] as? Date) ?? (attributes[.modificationDate] as? Date) ?? .now
-            guard let result = try? await TakeRecorder.recover(raw: raw) else { continue }
+            let result: TakeResult
+            do { result = try await TakeRecorder.recover(raw: raw) } catch RecorderError.nothingRecorded { continue } catch { failed += 1; continue }
             let title = "Recovered take " + started.formatted(date: .abbreviated, time: .shortened)
-            do { try await store.put(row(of: result, songID: "", title: title, date: started)) } catch { continue }
+            do { try await store.put(row(of: result, songID: "", title: title, date: started)) } catch { failed += 1; continue }
             result.confirmSaved()
             saved += 1
         }
+        unrecovered = failed
         return saved
     }
 }

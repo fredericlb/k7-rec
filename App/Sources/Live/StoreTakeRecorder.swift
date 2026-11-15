@@ -43,11 +43,13 @@ final class StoreTakeRecorder: TakeRecording {
     deinit { tasks.forEach { $0.cancel() }; watcher?.cancel() }
 
     var isRecording: Bool { recorder != nil }
+    var unrecovered = 0
 
     var elapsed: TimeInterval { (recorder?.elapsedSec ?? 0) + (parts.last?.durationSec ?? 0) }
 
     func start(songID: String, title: String) async -> Bool {
-        guard recorder == nil, await askMicrophone() else { failure = "The microphone is not allowed."; return false }
+        guard recorder == nil else { return false }
+        guard await askMicrophone() else { failure = "The microphone is not allowed."; return false }
         do {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             try open(extending: nil)
@@ -68,6 +70,7 @@ final class StoreTakeRecorder: TakeRecording {
     /// A rate change while paused ends the part and continues it, as docs/audio.md says.
     func resume() async {
         guard let r = recorder else { return }
+        failure = nil
         do {
             try r.resume()
             (paused, pauseCause) = (false, nil)
@@ -80,6 +83,7 @@ final class StoreTakeRecorder: TakeRecording {
 
     func stop() async {
         guard let r = recorder, let info = pending else { return }
+        failure = nil
         (recorder, pending, level, paused, pauseCause) = (nil, nil, 0, false, nil)
         watcher?.cancel()
         do {
@@ -104,9 +108,8 @@ final class StoreTakeRecorder: TakeRecording {
 
     func delete(id: String) async {
         guard let row = try? await store.get(RehearsalStore.Take.self, id) else { return }
-        try? await store.deleteTake(id)
         // The app cuts no clip, so a moment cannot outlive the file it names (docs/app.md).
-        for m in (try? await store.moments(of: row.audioPath)) ?? [] { try? await store.deleteMoment(m.id) }
+        try? await store.deleteTakeWithMoments(id)
         try? FileManager.default.removeItem(at: folder.appendingPathComponent(row.audioPath))
     }
 
@@ -133,6 +136,7 @@ final class StoreTakeRecorder: TakeRecording {
             let part = try await r.stop()
             parts.append(part)
             try open(extending: ExistingTake(url: part.url, envelope: part.envelope))
+            part.confirmSaved()
             (paused, pauseCause) = (false, nil)
         } catch RecorderError.nothingRecorded {
             do { try open(extending: parts.last.map { ExistingTake(url: $0.url, envelope: $0.envelope) }); (paused, pauseCause) = (false, nil) } catch { failure = error.localizedDescription }

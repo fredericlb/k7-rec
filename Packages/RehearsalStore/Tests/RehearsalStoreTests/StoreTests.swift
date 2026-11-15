@@ -113,6 +113,19 @@ import Testing
         #expect(try await s.list(Query<Marker>()).isEmpty)
     }
 
+    @Test func deletingATakeWithItsMomentsLeavesNoOrphanAndKeepsOtherRecordings() async throws {
+        let s = try Store()
+        try await s.put(Take(id: "t", audioPath: "a.m4a"))
+        try await s.put(Moment(id: "m", recordingPath: "a.m4a"))
+        try await s.put(Moment(id: "other", recordingPath: "b.m4a"))
+        try await s.put(Marker(id: "k1", recordingPath: "a.m4a", momentId: "m"))
+        try await s.put(Marker(id: "k2", recordingPath: "a.m4a"))
+        try await s.deleteTakeWithMoments("t")
+        #expect(try await s.get(Take.self, "t") == nil)
+        #expect(try await s.list(Query<Marker>()).isEmpty)
+        #expect(try await s.list(Query<Moment>()).map(\.id) == ["other"])
+    }
+
     @Test func observeEmitsOnChange() async throws {
         let s = try Store()
         var it = s.observe(Query<Song>()).makeAsyncIterator()

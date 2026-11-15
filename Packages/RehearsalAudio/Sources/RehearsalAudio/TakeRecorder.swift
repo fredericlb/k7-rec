@@ -221,13 +221,19 @@ public final class TakeRecorder: @unchecked Sendable {
     let side = TakeSidecar.read(for: raw)
     let out = raw.deletingLastPathComponent().appendingPathComponent("take-\(UUID().uuidString).m4a")
     return try await Task.detached {
-      let read = try EnvelopeReader.read(url: raw, intervalMs: side?.intervalMs ?? defaultEnvelopeIntervalMs)
       let file = try AVAudioFile(forReading: raw)
       guard file.length > 0 else {
+        // A continuation that crashed before any frame: the earlier part is the take.
+        if let earlier = side?.existing(besides: raw) {
+          return TakeResult(
+            url: earlier.url, durationSec: AVAudioFile.lengthSec(earlier.url), envelope: earlier.envelope,
+            appliedGain: 1, offsetSec: 0, rawURL: raw)
+        }
         try? FileManager.default.removeItem(at: raw)
         TakeSidecar.remove(for: raw)
         throw RecorderError.nothingRecorded
       }
+      let read = try EnvelopeReader.read(url: raw, intervalMs: side?.intervalMs ?? defaultEnvelopeIntervalMs)
       return try finish(
         raw: raw, to: out, existing: side?.existing(besides: raw), envelope: read.envelope,
         truePeak: Float(read.truePeak), frames: Int(file.length), rate: file.processingFormat.sampleRate)
