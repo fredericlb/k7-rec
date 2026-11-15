@@ -14,9 +14,27 @@ struct SettingsScreen: View {
                 Section {
                     Toggle("Use the headset microphone", isOn: $prefs.headsetInput)
                 } header: { Text("Recording") } footer: { Text("Off: takes use the phone's microphone and earphones keep full-quality sound. On: a Bluetooth headset's own microphone, in narrowband sound.") }
+                Section {
+                    LabeledContent("Access", value: Self.label(model.appleMusic.access))
+                    if model.appleMusic.access == .notDetermined {
+                        Button("Allow access") { Task { _ = await model.allowAppleMusic() } }
+                    }
+                    if model.appleMusic.access == .denied || model.appleMusic.access == .restricted {
+                        Button("Open Settings") { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } }
+                    }
+                } header: { Text("Apple Music") } footer: { Text("Songs you own are copied into the app; streamed ones can only be played here.") }
                 Section("About") { LabeledContent("Version", value: "0.1.0") }
             }
             .navigationTitle("Settings")
+        }
+    }
+
+    static func label(_ access: MusicAccess) -> String {
+        switch access {
+        case .authorized: "Allowed"
+        case .denied: "Denied"
+        case .restricted: "Restricted"
+        case .notDetermined: "Not asked yet"
         }
     }
 }

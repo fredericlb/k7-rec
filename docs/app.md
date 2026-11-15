@@ -127,3 +127,34 @@ file picker on iCloud files are still checked by hand.
 - **A saved span is not saved twice**; an empty title becomes "Moment m:ss", an empty pin name "Marker".
 - **`UITests/MomentsShot.swift` takes screenshots** of the page when `TEST_RUNNER_SHOT_DIR` is set, over a
   take seeded by the debug launch argument `-SeedTake <audio path>`; it skips otherwise.
+
+## Apple Music as a song source
+
+- **What the sound allows decides the two modes.** A track the user owns (bought, ripped, synced from a
+  Mac) has an `assetURL` and its audio can be read; a streaming-subscription track has none, and Apple
+  gives no access to its sound, only playback. `hasProtectedAsset` counts as unreadable. `AppleMusic.plan`
+  is the one place that sorts an item: export a file, keep a reference, or skip it.
+- **A readable item is exported and becomes an ordinary song.** AAC in `Songs/<title> <id tail>/original.m4a`
+  (`AVAssetExportSession`), so it has a waveform, loops and moments like any file. Its uuid is `apple:` plus the
+  library's persistent id: picking it again replaces its copy and keeps its row. The export shows progress
+  and is cancellable; a cancelled item leaves no folder and no row, the ones already filed stay.
+- **A streamed item is a reference song**: a row of source `appleMusicReference` holding the store id, no
+  audio file. It plays through `MPMusicPlayerController.applicationMusicPlayer`, which needs no MusicKit
+  capability and so no developer-account entitlement. Its screen has play, pause and a seekable position
+  from `currentPlaybackTime`, and one line saying why there is no waveform; texts, sheets and takes work
+  as for any song.
+- **A reference plays under the session a take uses** (`.playAndRecord`, speaker by default): the player
+  activates it before playing, so the record bar starts a take over it as for any song. One thing plays at a
+  time: a file that plays gives way, and the session is kept while the reference plays.
+- **The picker lists owned tracks first** (`showsCloudItems = false`); a second menu entry also lists the
+  streamed ones, which is the only way to reach the reference mode. The permission is asked when the
+  picker is opened; a refusal opens nothing and writes nothing, and Settings shows the state with a link to
+  the system Settings when it is denied.
+- **The library hides behind `MediaItemInfo`**, so mapping, export and refusal are tested with fakes.
+
+## Device only (M5)
+
+The simulator has no Apple Music library, so these are checked by hand on a phone: the permission prompt,
+the picker itself, a real export of an owned track, a protected or streamed item being offered as a
+reference, a streamed track playing and seeking, and a take recorded while it plays (the speaker is picked
+up by the microphone; headphones are not).

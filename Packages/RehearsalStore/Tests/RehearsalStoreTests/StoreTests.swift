@@ -14,6 +14,18 @@ import Testing
         #expect(t.duration == 0 && t.envelope.isEmpty && t.title == "")
     }
 
+    @Test func aSongRowWithoutASourceIsAFileSong() async throws {
+        let s = try Store()
+        try await s.write { tx in
+            try tx.db.execute(sql: "INSERT INTO docs VALUES ('Songs', 'a', '{\"id\":\"a\",\"title\":\"Old\"}')")
+            try tx.put(Song(id: "r", title: "Streamed", source: .appleMusicReference, storeId: "1440857781"))
+        }
+        let old = try #require(try await s.get(Song.self, "a"))
+        #expect(old.source == .file && old.storeId.isEmpty)
+        let ref = try #require(try await s.get(Song.self, "r"))
+        #expect(ref.source == .appleMusicReference && ref.storeId == "1440857781")
+    }
+
     @Test func modelsEncodeExactlyTheSchemaFields() throws {
         func keys<D: Document>(_ d: D) throws -> Set<String> {
             let o = try JSONSerialization.jsonObject(with: JSONEncoder().encode(d)) as! [String: Any]

@@ -24,6 +24,12 @@ SQL after the schema has vouched for it, never bound as a parameter.
 A listing that names its fields reads only those, each pulled out in SQL: a take's envelope is not
 handed back nor parsed unless asked for. The unselected fields decode as zeros.
 
+## A song's source
+
+A song carries `source` (`file`, the zero value, or `appleMusicReference`) and `storeId`. A reference
+song names an Apple Music track it can only play, so it has no audio `SongFile`; every row written before
+the field existed reads as `file` with no code to migrate it.
+
 ## One writer, short transactions
 
 The store is an actor over one `DatabaseQueue`: WAL, `synchronous = NORMAL` (a power cut can lose

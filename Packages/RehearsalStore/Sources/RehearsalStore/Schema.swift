@@ -12,7 +12,7 @@ public enum DocCollection: String, CaseIterable, Sendable {
     /// The fields of a row, which a filter or a partial listing may name.
     public var fields: [String] {
         switch self {
-        case .songs: ["id", "uuid", "title", "artist", "tags", "createdAt"]
+        case .songs: ["id", "uuid", "title", "artist", "tags", "createdAt", "source", "storeId"]
         case .songFiles: ["id", "songId", "kind", "path", "name", "mime", "position"]
         case .takes: ["id", "songId", "title", "createdAt", "duration", "envelope", "gain", "audioPath"]
         case .moments:

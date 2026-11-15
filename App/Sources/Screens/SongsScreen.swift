@@ -7,6 +7,7 @@ struct SongsScreen: View {
     @State private var picking = false
     @State private var pickFolder = false
     @State private var path: [Song] = []
+    @State private var pickingMusic: MusicPick?
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -30,8 +31,17 @@ struct SongsScreen: View {
                 Menu {
                     Button("Import a folder", systemImage: "folder") { pickFolder = true; picking = true }
                     Button("Import audio files", systemImage: "waveform") { pickFolder = false; picking = true }
+                    Button("From Apple Music", systemImage: "music.note") { openPicker(cloud: false) }
+                    Button("From Apple Music, streamed too", systemImage: "icloud") { openPicker(cloud: true) }
                 } label: { Image(systemName: "plus") }
             }
+            .sheet(item: $pickingMusic) { pick in
+                MediaPicker(cloud: pick == .streamed) { items in
+                    pickingMusic = nil
+                    Task { await model.importAppleMusic(items) }
+                } onCancel: { pickingMusic = nil }
+            }
+            .overlay(alignment: .bottom) { if let p = model.appleMusic.progress { ImportProgress(progress: p) } }
             .fileImporter(
                 isPresented: $picking,
                 allowedContentTypes: pickFolder ? [.folder] : [.audio],
@@ -41,4 +51,11 @@ struct SongsScreen: View {
             }
         }
     }
+
+    private func openPicker(cloud: Bool) {
+        Task { if await model.allowAppleMusic() { pickingMusic = cloud ? .streamed : .owned } }
+    }
 }
+
+/// Which tracks the media picker lists: the ones owned, or the streamed ones too.
+enum MusicPick: Identifiable { case owned, streamed; var id: Self { self } }

@@ -16,7 +16,13 @@ public protocol Document: Codable, Sendable, Identifiable, Equatable where ID ==
     var id: String { get }
 }
 
+/// Where a song's sound comes from; a row that never set it reads as `file`.
+public enum SongSource: String, Codable, Sendable {
+    case file, appleMusicReference
+}
+
 /// A song of the repertoire; `uuid` is the song folder's sidecar uuid, empty for a song made here.
+/// A reference song has no audio file: `storeId` names the Apple Music track it plays.
 public struct Song: Document {
     public static let collection = DocCollection.songs
     public var id: String
@@ -25,17 +31,23 @@ public struct Song: Document {
     public var artist: String
     public var tags: [String]
     public var createdAt: Double
+    public var source: SongSource
+    public var storeId: String
 
     public init(id: String = newID(), uuid: String = "", title: String = "", artist: String = "",
-                tags: [String] = [], createdAt: Double = Date().timeIntervalSince1970) {
+                tags: [String] = [], createdAt: Double = Date().timeIntervalSince1970,
+                source: SongSource = .file, storeId: String = "") {
         (self.id, self.uuid, self.title, self.artist, self.tags, self.createdAt) =
             (id, uuid, title, artist, tags, createdAt)
+        (self.source, self.storeId) = (source, storeId)
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.init(id: try c.zero(.id, ""), uuid: try c.zero(.uuid, ""), title: try c.zero(.title, ""),
-                  artist: try c.zero(.artist, ""), tags: try c.zero(.tags, []), createdAt: try c.zero(.createdAt, 0))
+                  artist: try c.zero(.artist, ""), tags: try c.zero(.tags, []), createdAt: try c.zero(.createdAt, 0),
+                  source: (try? c.decodeIfPresent(SongSource.self, forKey: .source)) ?? .file,
+                  storeId: try c.zero(.storeId, ""))
     }
 }
 

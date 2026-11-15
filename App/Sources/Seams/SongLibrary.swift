@@ -18,6 +18,9 @@ struct Song: Identifiable, Hashable {
     var folder = ""
     var added = Date()
     var audioURL: URL?
+    /// The Apple Music id of a song that can only be played, empty for a song with a file.
+    var referenceID = ""
+    var isReference: Bool { !referenceID.isEmpty }
 }
 
 /// A file of the song's `sheets/` folder, in the sidecar's order and under its name.

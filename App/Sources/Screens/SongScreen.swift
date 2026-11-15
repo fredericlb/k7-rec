@@ -19,7 +19,9 @@ struct SongScreen: View {
     @State private var pickingLRC = false
     private var live: Song { model.library.songs.first { $0.id == song.id } ?? song }
     private var playID: String { "song:" + song.id }
-    private var playing: Bool { model.player.loadedID == playID && model.player.isPlaying }
+    private var playing: Bool {
+        live.isReference ? model.reference.loadedID == song.id && model.reference.isPlaying : model.player.loadedID == playID && model.player.isPlaying
+    }
     private var semitones: Int { model.prefs.transpose(of: song.id) }
 
     private var tabs: [SongTab] { SongTabs.available(live) }
@@ -34,6 +36,7 @@ struct SongScreen: View {
                     onSeek: { model.seek(id: playID, url: url, to: $0) })
                     .padding(.horizontal)
             }
+            if live.isReference { ReferencePanel(song: live) }
             HStack {
                 ScrollViewReader { proxy in
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -68,11 +71,13 @@ struct SongScreen: View {
 
     private var header: some View {
         HStack {
-            Button { if let url = live.audioURL { model.togglePlay(id: playID, url: url) } } label: {
+            Button {
+                if live.isReference { model.toggleReference(live) } else if let url = live.audioURL { model.togglePlay(id: playID, url: url) }
+            } label: {
                 Image(systemName: playing ? "pause.fill" : "play.fill").frame(width: 44, height: 44).contentShape(Rectangle())
             }
             .accessibilityLabel(playing ? "Pause" : "Play")
-            .disabled(live.audioURL == nil)
+            .disabled(live.audioURL == nil && !live.isReference)
             Text(live.title).font(.headline).lineLimit(1).minimumScaleFactor(0.6)
             Spacer()
             Button { menuOpen = true } label: { Image(systemName: "ellipsis").frame(width: 32, height: 32) }

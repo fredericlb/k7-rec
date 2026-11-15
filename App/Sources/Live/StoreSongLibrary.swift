@@ -63,7 +63,8 @@ final class StoreSongLibrary: SongLibrary {
                 sheets: own.filter { $0.kind == .sheet }.map { SongSheet(id: $0.id, name: $0.name, url: root.appendingPathComponent($0.path)) },
                 folder: own.first.map { String($0.path.prefix { $0 != "/" }) } ?? "",
                 added: Date(timeIntervalSince1970: row.createdAt),
-                audioURL: own.first { $0.kind == .audio }.map { root.appendingPathComponent($0.path) })
+                audioURL: own.first { $0.kind == .audio }.map { root.appendingPathComponent($0.path) },
+                referenceID: row.source == .appleMusicReference ? row.storeId : "")
         }
     }
 }
