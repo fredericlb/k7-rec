@@ -26,7 +26,7 @@ public final class TakePlayer: PlaybackYielding {
   private var generation = 0
   private var lastFrame = 0
   private let session: SessionHost
-  private var configObserver: NSObjectProtocol?
+  private let configToken = ObserverToken()
   // Offline rendering never reports played-back, so a test asks for consumed.
   var completionType = AVAudioPlayerNodeCompletionCallbackType.dataPlayedBack
 
@@ -49,14 +49,14 @@ public final class TakePlayer: PlaybackYielding {
     eq.globalGain = Self.decibels(gain)
     session.onInterruption = { [weak self] _ in MainActor.assumeIsolated { self?.pause() } }
     session.observe()
-    configObserver = NotificationCenter.default.addObserver(
-      forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
-    ) { [weak self] _ in MainActor.assumeIsolated { self?.pause() } }
+    configToken.set(
+      NotificationCenter.default.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main) {
+        [weak self] _ in MainActor.assumeIsolated { self?.pause() }
+      })
   }
 
   deinit {
     session.unobserve()
-    if let o = configObserver { NotificationCenter.default.removeObserver(o) }
   }
 
   /// The playhead, in seconds from the start of the file.
@@ -126,7 +126,7 @@ public final class TakePlayer: PlaybackYielding {
     let count = rangeEnd - start
     guard count > 0 else { return }
     let g = generation
-    node.scheduleSegment(file, startingFrame: AVAudioFramePosition(start), frameCount: AVAudioFrameCount(count), at: nil, completionCallbackType: completionType) { [weak self] _ in
+    node.scheduleSegment(file, startingFrame: AVAudioFramePosition(start), frameCount: AVAudioFrameCount(count), at: nil, completionCallbackType: completionType) { @Sendable [weak self] _ in
       Task { @MainActor in self?.segmentDone(g) }
     }
   }

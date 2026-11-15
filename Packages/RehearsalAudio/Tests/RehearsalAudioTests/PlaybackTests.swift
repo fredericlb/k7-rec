@@ -122,6 +122,19 @@ final class PlaybackTests: XCTestCase {
     XCTAssertNil(m.state)
   }
 
+  func testNoBeatIsReportedAfterStop() async throws {
+    let m = Metronome(session: FakeSession())
+    var beats = 0
+    m.onBeat = { _ in beats += 1 }
+    try m.start(bpm: 600, startSec: 0)
+    try await Task.sleep(nanoseconds: 400_000_000)
+    m.stop()
+    let atStop = beats
+    try await Task.sleep(nanoseconds: 400_000_000)
+    XCTAssertGreaterThan(atStop, 0)
+    XCTAssertEqual(beats, atStop)
+  }
+
   func testPlayerLoopsItsRange() throws {
     let (p, e) = try offlinePlayer(seconds: 2)
     p.setRange(0.5...0.75, loops: true)

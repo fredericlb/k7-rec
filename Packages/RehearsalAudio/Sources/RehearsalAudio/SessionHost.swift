@@ -66,3 +66,14 @@ public final class SystemSession: SessionHost, @unchecked Sendable {
   }
   #endif
 }
+
+/// A notification token a main-actor object can drop from its nonisolated deinit.
+final class ObserverToken: @unchecked Sendable {
+  private var token: NSObjectProtocol?
+  func set(_ t: NSObjectProtocol) { token = t }
+  func remove() {
+    if let t = token { NotificationCenter.default.removeObserver(t) }
+    token = nil
+  }
+  deinit { remove() }
+}
