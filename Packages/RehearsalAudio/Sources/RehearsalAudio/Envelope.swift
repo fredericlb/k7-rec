@@ -1,6 +1,7 @@
 // Envelope.swift: a take's loudness as RMS buckets of a fixed interval, as liveEnvelope.ts and the TS Envelope carry it.
 // What reads wrong: a bucket is a window of raw frames, and its gain is applied later, never while recording.
 
+import Accelerate
 import Foundation
 
 public let defaultEnvelopeIntervalMs = 200
@@ -41,9 +42,16 @@ public struct EnvelopeBuilder: Sendable {
   }
 
   public mutating func feed(_ frames: UnsafeBufferPointer<Float>) {
-    for v in frames {
-      sumSquares += Double(v) * Double(v)
-      filled += 1
+    guard var base = frames.baseAddress else { return }
+    var left = frames.count
+    while left > 0 {
+      let n = min(left, bucketFrames - filled)
+      var sum: Float = 0
+      vDSP_svesq(base, 1, &sum, vDSP_Length(n))
+      sumSquares += Double(sum)
+      filled += n
+      base += n
+      left -= n
       if filled == bucketFrames { closeBucket() }
     }
   }
