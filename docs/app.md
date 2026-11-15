@@ -100,3 +100,11 @@ triad) and answers nil for what is not a chord; a card with no diagram shows its
 
 Nothing new needs a device; what is audible, the metronome click through a speaker or Bluetooth, and the
 file picker on iCloud files are still checked by hand.
+
+## Playback
+
+- **The seam follows the player, not its own flag.** `TakePlayer.onPause` reports every pause, whoever asked
+  (another player taking the floor, an interruption, a route change), so the play button never shows
+  "playing" over silence.
+- **A button a thumb must hit is 44 pt**: the song header's and the Takes rows' play buttons had the
+  glyph's 14 pt as their target. `UITests/PlayTests.swift` taps the real button on the simulator.

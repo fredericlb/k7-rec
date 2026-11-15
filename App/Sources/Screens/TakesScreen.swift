@@ -12,7 +12,9 @@ struct TakesScreen: View {
                         if let url = take.audioURL { model.togglePlay(id: take.id, url: url) }
                     } label: {
                         Image(systemName: model.player.loadedID == take.id && model.player.isPlaying ? "pause.fill" : "play.fill")
+                            .frame(width: 44, height: 44).contentShape(Rectangle())
                     }
+                    .accessibilityLabel(model.player.loadedID == take.id && model.player.isPlaying ? "Pause" : "Play")
                     .buttonStyle(.borderless)
                     NavigationLink(value: take.id) {
                         HStack {

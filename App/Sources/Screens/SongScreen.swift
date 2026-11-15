@@ -69,8 +69,9 @@ struct SongScreen: View {
     private var header: some View {
         HStack {
             Button { if let url = live.audioURL { model.togglePlay(id: playID, url: url) } } label: {
-                Image(systemName: playing ? "pause.fill" : "play.fill")
+                Image(systemName: playing ? "pause.fill" : "play.fill").frame(width: 44, height: 44).contentShape(Rectangle())
             }
+            .accessibilityLabel(playing ? "Pause" : "Play")
             .disabled(live.audioURL == nil)
             Text(live.title).font(.headline).lineLimit(1).minimumScaleFactor(0.6)
             Spacer()

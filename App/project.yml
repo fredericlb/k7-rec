@@ -63,10 +63,19 @@ targets:
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
+  RehearsalUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: Rehearsal
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
 schemes:
   Rehearsal:
     build:
       targets:
         Rehearsal: all
     test:
-      targets: [RehearsalTests]
+      targets: [RehearsalTests, RehearsalUITests]

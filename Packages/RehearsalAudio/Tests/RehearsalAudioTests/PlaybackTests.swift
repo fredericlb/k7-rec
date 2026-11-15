@@ -168,6 +168,22 @@ final class PlaybackTests: XCTestCase {
     XCTAssertEqual(TakePlayer.decibels(1000).1, 24)
   }
 
+  func testEveryPauseIsReportedToTheOwner() throws {
+    let session = FakeSession()
+    let (p, e) = try offlinePlayer(seconds: 2, session: session)
+    var paused = 0
+    p.onPause = { paused += 1 }
+    try p.play()
+    try render(e, frames: 400)
+    session.send(.began)
+    XCTAssertEqual(p.state, .paused)
+    XCTAssertEqual(paused, 1)
+    try p.play()
+    try render(e, frames: 400)
+    p.yieldPlayback()
+    XCTAssertEqual(paused, 2)
+  }
+
   func testAGainOf32IsHeardAt32() throws {
     let url = try TestAudio.wav(seconds: 1, amp: 0.02)
     let engine = AVAudioEngine()

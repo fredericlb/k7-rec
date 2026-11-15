@@ -10,6 +10,8 @@ public final class TakePlayer: PlaybackYielding {
   public private(set) var state = PlayerState.stopped
   public let durationSec: Double
   public var onFinish: (() -> Void)?
+  /// Called whenever the player pauses, whoever asked: the caller, another player taking the floor, an interruption.
+  public var onPause: (() -> Void)?
   public var gain: Double { didSet { applyGain() } }
 
   private let engine: AVAudioEngine
@@ -91,6 +93,7 @@ public final class TakePlayer: PlaybackYielding {
     resumeFrame = currentFrame
     halt()
     state = .paused
+    onPause?()
   }
 
   public func stop() {

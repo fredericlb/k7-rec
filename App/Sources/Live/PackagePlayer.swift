@@ -17,13 +17,14 @@ final class PackagePlayer: TakePlaying {
         unload()
         guard let p = try? TakePlayer(url: url) else { return }
         p.onFinish = { [weak self] in self?.isPlaying = false; self?.onIdle?() }
+        p.onPause = { [weak self] in self?.isPlaying = false; self?.onIdle?() }
         player = p
         loadedID = id
     }
 
     func toggle() {
         guard let player else { return }
-        if isPlaying { player.pause(); isPlaying = false; onIdle?() } else { isPlaying = (try? player.play()) != nil }
+        if isPlaying { player.pause(); isPlaying = false } else { isPlaying = (try? player.play()) != nil }
     }
 
     func seek(to seconds: TimeInterval) { player?.seek(to: seconds) }
