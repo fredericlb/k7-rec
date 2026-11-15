@@ -9,7 +9,7 @@ public enum SongFolder {
     private static let audioExtensions: Set<String> = ["flac", "wav", "mp3", "m4a", "aac", "aif", "aiff", "ogg", "opus"]
     private static let texts: [(String, SongFileKind)] = [("lyrics.txt", .lyrics), ("chords.txt", .chords), ("tabs.txt", .tabs)]
 
-    /// Reads `folder`; file paths are `destination/<file>`, the place the app copies the folder to.
+    /// Reads `folder`; file paths are `destination/<file>`, the place the app copies the folder to (`docs/store.md`).
     public static func read(_ folder: URL, destination: String? = nil) throws -> (song: Song, files: [SongFile]) {
         let fm = FileManager.default
         let dest = destination ?? folder.lastPathComponent
@@ -18,7 +18,7 @@ public enum SongFolder {
 
         let uuid = text(meta["uuid"])
         let song = Song(
-            id: uuid.isEmpty ? derivedID(dest) : uuid, uuid: uuid,
+            id: uuid.isEmpty ? derivedID(source: folder) : uuid, uuid: uuid,
             title: text(meta["title"]).nonEmpty ?? folder.lastPathComponent, artist: text(meta["artist"]),
             tags: (meta["tags"] as? [Any])?.map(text).filter { !$0.isEmpty } ?? [])
 
@@ -55,9 +55,19 @@ public enum SongFolder {
         return out
     }
 
-    /// A UUIDv5 of the destination path: the same folder always gets the same id.
-    static func derivedID(_ destination: String) -> String {
-        var bytes = Array(Insecure.SHA1.hash(data: Data("rehearsal-song:\(destination)".utf8)).prefix(16))
+    /// The folder name to copy a song to: its own name plus the first 8 characters of its id, so two songs never share one.
+    public static func destinationName(for folder: URL) -> String {
+        let meta = (try? String(contentsOf: folder.appendingPathComponent("song.yaml"), encoding: .utf8))
+            .flatMap { try? Yams.load(yaml: $0) } as? [String: Any] ?? [:]
+        let uuid = text(meta["uuid"])
+        let id = uuid.isEmpty ? derivedID(source: folder) : uuid
+        return "\(folder.lastPathComponent) \(id.prefix(8))"
+    }
+
+    /// A UUIDv5 of the picked folder's resolved path: the same folder always gets the same id, two folders never share one.
+    static func derivedID(source: URL) -> String {
+        let path = source.resolvingSymlinksInPath().standardizedFileURL.path
+        var bytes = Array(Insecure.SHA1.hash(data: Data("rehearsal-song:\(path)".utf8)).prefix(16))
         bytes[6] = (bytes[6] & 0x0F) | 0x50
         bytes[8] = (bytes[8] & 0x3F) | 0x80
         return UUID(uuid: (bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8],

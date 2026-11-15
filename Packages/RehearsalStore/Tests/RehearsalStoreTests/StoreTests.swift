@@ -19,11 +19,11 @@ import Testing
             let o = try JSONSerialization.jsonObject(with: JSONEncoder().encode(d)) as! [String: Any]
             return Set(o.keys)
         }
-        #expect(try keys(Song()) == Set(Collection.songs.fields))
-        #expect(try keys(SongFile()) == Set(Collection.songFiles.fields))
-        #expect(try keys(Take()) == Set(Collection.takes.fields))
-        #expect(try keys(Moment()) == Set(Collection.moments.fields))
-        #expect(try keys(Marker()) == Set(Collection.markers.fields))
+        #expect(try keys(Song()) == Set(DocCollection.songs.fields))
+        #expect(try keys(SongFile()) == Set(DocCollection.songFiles.fields))
+        #expect(try keys(Take()) == Set(DocCollection.takes.fields))
+        #expect(try keys(Moment()) == Set(DocCollection.moments.fields))
+        #expect(try keys(Marker()) == Set(DocCollection.markers.fields))
     }
 
     @Test func listingThatNamesFieldsReadsOnlyThose() async throws {
@@ -107,6 +107,23 @@ import Testing
         #expect(try await it.next()?.count == 0)
         try await s.put(Song(id: "a", title: "A"))
         #expect(try await it.next()?.map(\.title) == ["A"])
+    }
+
+    @Test func aTakeWithNoAudioPathLeavesUnrelatedMarkersAlone() async throws {
+        let s = try Store()
+        try await s.put(Take(id: "t", audioPath: ""))
+        try await s.put(Marker(id: "k", recordingPath: ""))
+        try await s.deleteTake("t")
+        #expect(try await s.get(Marker.self, "k") != nil)
+    }
+
+    @Test func aWriteToAnotherCollectionDoesNotReEmitTheListing() async throws {
+        let s = try Store()
+        var it = s.observe(Query<Take>()).makeAsyncIterator()
+        #expect(try await it.next()?.count == 0)
+        try await s.put(Marker(id: "k", recordingPath: "x"))
+        try await s.put(Take(id: "t"))
+        #expect(try await it.next()?.map(\.id) == ["t"])
     }
 
     @Test func fileStoreSurvivesReopen() async throws {

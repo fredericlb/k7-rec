@@ -12,13 +12,13 @@ extension KeyedDecodingContainer {
 
 /// What a row of the store is: a collection and an id.
 public protocol Document: Codable, Sendable, Identifiable, Equatable where ID == String {
-    static var collection: Collection { get }
+    static var collection: DocCollection { get }
     var id: String { get }
 }
 
 /// A song of the repertoire; `uuid` is the song folder's sidecar uuid, empty for a song made here.
 public struct Song: Document {
-    public static let collection = Collection.songs
+    public static let collection = DocCollection.songs
     public var id: String
     public var uuid: String
     public var title: String
@@ -46,7 +46,7 @@ public enum SongFileKind: String, Codable, Sendable, CaseIterable {
 
 /// One file of a song; `path` is relative to the app's songs folder.
 public struct SongFile: Document {
-    public static let collection = Collection.songFiles
+    public static let collection = DocCollection.songFiles
     public var id: String
     public var songId: String
     public var kind: SongFileKind
@@ -72,7 +72,7 @@ public struct SongFile: Document {
 
 /// A recording made in the app (the web's "session"); `audioPath` names the file under the recordings folder.
 public struct Take: Document {
-    public static let collection = Collection.takes
+    public static let collection = DocCollection.takes
     public var id: String
     public var songId: String
     public var title: String
@@ -99,7 +99,7 @@ public struct Take: Document {
 
 /// A span of a recording, named by the recording's path (`moments.md` of the web store).
 public struct Moment: Document {
-    public static let collection = Collection.moments
+    public static let collection = DocCollection.moments
     public var id: String
     public var recordingPath: String
     public var recordedAt: Double
@@ -133,7 +133,7 @@ public struct Moment: Document {
 
 /// A pin on a recording's timeline; `momentId` is set when the moment owns it, empty for a recording's own.
 public struct Marker: Document {
-    public static let collection = Collection.markers
+    public static let collection = DocCollection.markers
     public var id: String
     public var recordingPath: String
     public var momentId: String

@@ -70,7 +70,7 @@ public actor Store {
 
     /// The listing again each time it changes, first at once; ends with the error that stopped it.
     public nonisolated func observe<D: Document>(_ q: Query<D> = Query()) -> AsyncThrowingStream<[D], Error> {
-        let values = ValueObservation.tracking { try Rows.list($0, q) }.values(in: queue)
+        let values = ValueObservation.tracking { try Rows.list($0, q) }.removeDuplicates().values(in: queue)
         return AsyncThrowingStream { continuation in
             let task = Task {
                 do { for try await v in values { continuation.yield(v) }; continuation.finish() }

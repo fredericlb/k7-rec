@@ -43,7 +43,7 @@ in `Store+Rules.swift`.
 ## Observation
 
 `Store.observe(query)` is a `nonisolated` async stream: it emits the listing at once and again on
-each change, and ends with the error that stopped it. It is a throwing stream, since a database
+each change, and ends with the error that stopped it. It emits only when the listing changed, since a write to another collection re-runs the query over the whole table. It is a throwing stream, since a database
 error is not something a list view can recover by itself.
 
 ## The song folder importer
@@ -52,8 +52,12 @@ error is not something a list view can recover by itself.
 sidecar's `uuid`, `title`, `artist`, `tags` and the `songbook:` sheets' order and names
 (`packages/mediatek/docs/songbook.md`); everything else in `song.yaml` is left alone. The uuid is
 the song's id, so importing a folder twice updates a song instead of doubling it. A folder with no
-uuid gets a UUIDv5-style hash of its destination path as id, never a random one, so re-importing it
-is idempotent too; its folder name is its title. Sheets the sidecar does not list follow the
+uuid gets a UUIDv5-style hash of the path it was picked from (symlinks resolved) as id, never a
+random one: picking the same folder again is idempotent, and two different folders that share a
+name are two songs. Its folder name is its title. The destination is the importer's choice and
+never decides the id: `SongFolder.destinationName(for:)` names it `<folder name> <first 8 of the
+id>`, so two songs never share a copy and the importer never deletes a destination another song
+owns. A moved folder is a new song. Sheets the sidecar does not list follow the
 listed ones, by name. File ids derive from the song id and the file, for the same reason.
 Paths are relative to the app's songs folder: the caller names the folder it copies the song to.
 

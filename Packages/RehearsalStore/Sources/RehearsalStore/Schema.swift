@@ -2,7 +2,7 @@
 // What a reader gets wrong: a field is added here AND to its model; a test fails when the two differ.
 
 /// A collection of the store: its name is the `coll` column.
-public enum Collection: String, CaseIterable, Sendable {
+public enum DocCollection: String, CaseIterable, Sendable {
     case songs = "Songs"
     case songFiles = "SongFiles"
     case takes = "Takes"

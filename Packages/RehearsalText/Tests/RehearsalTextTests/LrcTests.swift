@@ -216,3 +216,12 @@ let lrcSample = """
         #expect(LRC.mergeTimedSheet(target: "All on that day", timedSheet: "All on that day") == .empty)
     }
 }
+
+@Suite struct FormatTimecodeTests {
+    @Test func nonFiniteAndHugeSecondsDoNotTrap() {
+        #expect(LyricsTiming.format(.nan) == "{{00:00.00}}")
+        #expect(LyricsTiming.format(.infinity) == "{{00:00.00}}")
+        #expect(LyricsTiming.format(-.infinity) == "{{00:00.00}}")
+        #expect(!LyricsTiming.format(1e300).isEmpty)
+    }
+}

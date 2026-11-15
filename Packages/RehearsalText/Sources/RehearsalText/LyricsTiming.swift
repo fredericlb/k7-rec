@@ -45,7 +45,7 @@ public enum LyricsTiming {
 
     /// `{{MM:SS.cc}}` for a time in seconds, to the hundredth, rounded down.
     public static func format(_ seconds: Double) -> String {
-        let cs = max(0, Int((seconds * 100 + 1e-6).rounded(.down)))
+        let cs = seconds.isFinite ? Int(min(max(0, (seconds * 100 + 1e-6).rounded(.down)), 1e12)) : 0
         let s = cs / 100
         func pad(_ n: Int) -> String { n < 10 ? "0\(n)" : "\(n)" }
         return "{{\(pad(s / 60)):\(pad(s % 60)).\(pad(cs % 100))}}"
