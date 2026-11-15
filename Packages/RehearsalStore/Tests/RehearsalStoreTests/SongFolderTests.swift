@@ -36,7 +36,7 @@ import Testing
 
     @Test func folderWithoutSidecarFallsBackToItsName() throws {
         let (song, files) = try SongFolder.read(try folder(nil, files: ["chords.txt"]))
-        #expect(song.title == "My Song" && song.artist == "" && song.uuid == "" && song.id.count == 15)
+        #expect(song.title == "My Song" && song.artist == "" && song.uuid == "" && song.id == SongFolder.derivedID("My Song"))
         #expect(files.map(\.kind) == [.chords] && files[0].path == "My Song/chords.txt")
     }
 
@@ -47,5 +47,16 @@ import Testing
         try await s.saveSong(song, files: files)
         #expect(try await s.list(Query<SongFile>()).count == 1)
         #expect(try await s.list(Query<Song>(where: [Filter("uuid", equals: "u1")])).count == 1)
+    }
+
+    @Test func uuidLessFolderImportedTwiceIsOneSong() async throws {
+        let dir = try folder(nil, files: ["lyrics.txt"])
+        let s = try Store()
+        for _ in 0..<2 {
+            let (song, files) = try SongFolder.read(dir, destination: "Songs/A")
+            try await s.saveSong(song, files: files)
+        }
+        #expect(try await s.list(Query<Song>()).count == 1)
+        #expect(SongFolder.derivedID("Songs/A") != SongFolder.derivedID("Songs/B"))
     }
 }

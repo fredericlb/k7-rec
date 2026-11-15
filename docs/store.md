@@ -51,8 +51,9 @@ error is not something a list view can recover by itself.
 `SongFolder.read` is pure: a folder URL in, a `Song` and its `SongFile`s out. It reads only the
 sidecar's `uuid`, `title`, `artist`, `tags` and the `songbook:` sheets' order and names
 (`packages/mediatek/docs/songbook.md`); everything else in `song.yaml` is left alone. The uuid is
-the song's id, so importing a folder twice updates a song instead of doubling it; a folder with no
-uuid gets a fresh id and its folder name as title. Sheets the sidecar does not list follow the
+the song's id, so importing a folder twice updates a song instead of doubling it. A folder with no
+uuid gets a UUIDv5-style hash of its destination path as id, never a random one, so re-importing it
+is idempotent too; its folder name is its title. Sheets the sidecar does not list follow the
 listed ones, by name. File ids derive from the song id and the file, for the same reason.
 Paths are relative to the app's songs folder: the caller names the folder it copies the song to.
 

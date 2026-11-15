@@ -1,6 +1,7 @@
 // SongFolder.swift — reads a song folder (`song.yaml` and the files beside it) into a Song and its SongFiles.
 // What a reader gets wrong: only uuid, title, artist, tags and the sheets' order are read; the rest is left alone.
 
+import CryptoKit
 import Foundation
 import Yams
 
@@ -17,7 +18,7 @@ public enum SongFolder {
 
         let uuid = text(meta["uuid"])
         let song = Song(
-            id: uuid.isEmpty ? newID() : uuid, uuid: uuid,
+            id: uuid.isEmpty ? derivedID(dest) : uuid, uuid: uuid,
             title: text(meta["title"]).nonEmpty ?? folder.lastPathComponent, artist: text(meta["artist"]),
             tags: (meta["tags"] as? [Any])?.map(text).filter { !$0.isEmpty } ?? [])
 
@@ -52,6 +53,15 @@ public enum SongFolder {
             if !out.contains(where: { $0.file == "sheets/\(name)" }) { out.append(("sheets/\(name)", name, "")) }
         }
         return out
+    }
+
+    /// A UUIDv5 of the destination path: the same folder always gets the same id.
+    static func derivedID(_ destination: String) -> String {
+        var bytes = Array(Insecure.SHA1.hash(data: Data("rehearsal-song:\(destination)".utf8)).prefix(16))
+        bytes[6] = (bytes[6] & 0x0F) | 0x50
+        bytes[8] = (bytes[8] & 0x3F) | 0x80
+        return UUID(uuid: (bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8],
+                           bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15])).uuidString.lowercased()
     }
 
     private static func text(_ v: Any?) -> String {
