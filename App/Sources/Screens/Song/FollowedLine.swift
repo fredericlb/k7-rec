@@ -1,4 +1,5 @@
 // A line of a text tab: highlighted while it is the one sung, and tappable when it carries a time.
+import RehearsalText
 import SwiftUI
 
 extension View {
@@ -29,5 +30,21 @@ struct FollowedScroll<Content: View>: View {
                     if let line { withAnimation { proxy.scrollTo(max(line - 3, 0), anchor: .topLeading) } }
                 }
         }
+    }
+}
+
+/// The parsed lines of one text and its timed line numbers, parsed again only when the text or the transposition changes.
+final class ParsedMemo {
+    typealias Value = (lines: [ParsedLine], timed: Set<Int>)
+    private var key: (text: String, semitones: Int)?
+    private var value: Value = ([], [])
+    private(set) var parses = 0
+
+    func get(_ text: String, _ semitones: Int, parse: (String, Int) -> Value) -> Value {
+        if let key, key.text == text, key.semitones == semitones { return value }
+        parses += 1
+        value = parse(text, semitones)
+        key = (text, semitones)
+        return value
     }
 }

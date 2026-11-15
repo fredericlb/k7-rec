@@ -9,6 +9,8 @@ struct Song: Identifiable, Hashable {
     var hasLyrics = true
     var hasTab = false
     var hasSheets = false
+    /// Whether the chords name any chord that has a diagram; read once when the song is built.
+    var hasDiagrams = false
     var chords = ""
     var lyrics = ""
     var tab = ""
@@ -61,9 +63,9 @@ protocol SongLibrary: AnyObject {
 final class FakeSongLibrary: SongLibrary {
     private(set) var imported: [URL] = []
     private(set) var songs: [Song] = [
-        Song(id: "1", title: "Blue Monday Jam", artist: "The Band", hasTab: true,
+        Song(id: "1", title: "Blue Monday Jam", artist: "The Band", hasTab: true, hasDiagrams: true,
              chords: "Am       F\nG        C", lyrics: "{{00:04}} First line\n{{00:09}} Second line"),
-        Song(id: "2", title: "Slow Waltz", artist: "Trio", hasSheets: true,
+        Song(id: "2", title: "Slow Waltz", artist: "Trio", hasSheets: true, hasDiagrams: true,
              chords: "D  A  Bm  G", lyrics: "Only words here"),
         Song(id: "3", title: "Untitled riff", artist: "", hasChords: false, hasLyrics: false),
     ]

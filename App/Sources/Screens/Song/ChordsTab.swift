@@ -8,9 +8,10 @@ struct ChordsTab: View {
     let active: Int?
     let onTap: (Int) -> Void
 
+    @State private var memo = ParsedMemo()
+
     var body: some View {
-        let lines = SongText.displayLines(text, semitones: semitones)
-        let timed = Set(LyricsTiming.byLine(text).map(\.line))
+        let (lines, timed) = memo.get(text, semitones) { (SongText.displayLines($0, semitones: $1), Set(LyricsTiming.byLine($0).map(\.line))) }
         FollowedScroll(axes: [.vertical, .horizontal], active: active) {
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(lines.enumerated()), id: \.offset) { i, line in

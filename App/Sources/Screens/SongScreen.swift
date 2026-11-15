@@ -1,5 +1,6 @@
 // One song: a header (back is the nav bar's, then play, title, menu) over a row of tabs, Info last and pinned right.
 // What a reader gets wrong: the screen reads the live song by id, since the pushed value is a snapshot.
+import RehearsalText
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -61,7 +62,7 @@ struct SongScreen: View {
             menuOpen = DebugLaunch.menu
             wave = await model.library.wave(of: live)
         }
-        .task(id: playing) { await follow() }
+        .task(id: "\(playing)-\(current.rawValue)") { await follow() }
         .onChange(of: current) { refreshActive() }
         .sheet(item: $editing) { kind in TextEditorSheet(song: live, kind: kind) }
         .fileImporter(
@@ -123,15 +124,16 @@ struct SongScreen: View {
 
     private var followedText: String { current == .chords ? live.chords : live.lyrics }
 
-    private func refreshActive() {
-        let line = model.player.loadedID == playID ? SongText.activeLine(followedText, at: model.player.position) : nil
+    private func refreshActive(_ timing: [LineTime]? = nil) {
+        let line = model.player.loadedID == playID ? LyricsTiming.lineAt(timing ?? LyricsTiming.byLine(followedText), seconds: model.player.position) : nil
         if line != active { active = line }
     }
 
     private func follow() async {
         refreshActive()
+        let timing = LyricsTiming.byLine(followedText)
         while playing, !Task.isCancelled {
-            refreshActive()
+            refreshActive(timing)
             try? await Task.sleep(nanoseconds: 150_000_000)
         }
     }
@@ -169,8 +171,7 @@ enum SongTabs {
         if song.hasLyrics { out.append(.lyrics) }
         if song.hasSheets { out.append(.sheets) }
         if song.hasTab { out.append(.tab) }
-        let hasChords = !SongText.diagramChords(chords: song.chords, lyrics: song.lyrics, semitones: 0).isEmpty
-        if hasChords { out.insert(.diagrams, at: min(1, out.count)) }
+        if song.hasDiagrams { out.insert(.diagrams, at: min(1, out.count)) }
         return out
     }
 

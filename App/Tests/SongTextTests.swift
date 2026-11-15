@@ -89,4 +89,15 @@ final class SongTextTests: XCTestCase {
         XCTAssertNil(db.fingering(for: "N.C."))
         XCTAssertNil(ChordDiagrams(data: Data()).fingering(for: "C"))
     }
+
+    func testTheParsedLinesAreKeptUntilTheTextOrTheTranspositionChanges() {
+        let memo = ParsedMemo()
+        let parse: (String, Int) -> ParsedMemo.Value = { (SongText.displayLines($0, semitones: $1), []) }
+        _ = memo.get("Am F", 0, parse: parse)
+        _ = memo.get("Am F", 0, parse: parse)
+        XCTAssertEqual(memo.parses, 1)
+        _ = memo.get("Am F", 2, parse: parse)
+        _ = memo.get("Am G", 2, parse: parse)
+        XCTAssertEqual(memo.parses, 3)
+    }
 }

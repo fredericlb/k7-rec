@@ -43,7 +43,8 @@ struct SongImporter: Sendable {
             try Self.stamp(uuid: known.isEmpty ? UUID().uuidString.lowercased() : known, in: tmp)
             (song, files) = try SongFolder.read(tmp, destination: name)
         }
-        if song.title == name { song.title = picked }
+        song.folder = name
+        if song.title == name || song.title == tmp.lastPathComponent { song.title = picked }
         if !isFolder { (song.title, song.artist) = await Self.tags(of: url, fallback: picked) }
         if fm.fileExists(atPath: dest.path) { _ = try fm.replaceItemAt(dest, withItemAt: tmp) } else { try fm.moveItem(at: tmp, to: dest) }
         let (filed, rows) = (song, files)

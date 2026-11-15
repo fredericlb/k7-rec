@@ -7,9 +7,10 @@ struct LyricsTab: View {
     let active: Int?
     let onTap: (Int) -> Void
 
+    @State private var memo = ParsedMemo()
+
     var body: some View {
-        let lines = ChordSheet.parse(text)
-        let timed = Set(LyricsTiming.byLine(text).map(\.line))
+        let (lines, timed) = memo.get(text, 0) { t, _ in (ChordSheet.parse(t), Set(LyricsTiming.byLine(t).map(\.line))) }
         FollowedScroll(active: active) {
             LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(lines.enumerated()), id: \.offset) { i, line in

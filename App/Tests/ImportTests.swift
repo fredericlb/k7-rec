@@ -125,4 +125,23 @@ final class ImportTests: XCTestCase {
         XCTAssertEqual(song.artist, "X")
         XCTAssertEqual(song.tags, ["rock"])
     }
+
+    func testATextTypedAfterEmptyingTheLastFileGoesBackToTheSongsOwnFolder() async throws {
+        let (lib, _, root) = try library()
+        for name in ["A", "B"] {
+            let folder = root.appendingPathComponent(name).appendingPathComponent("Intro", isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try "words \(name)".write(to: folder.appendingPathComponent("lyrics.txt"), atomically: true, encoding: .utf8)
+            _ = await lib.importURLs([folder])
+        }
+        await lib.refresh()
+        XCTAssertEqual(lib.songs.count, 2)
+        let (one, two) = (lib.songs[0], lib.songs[1])
+        for song in [one, two] { _ = await lib.saveText(.lyrics, "", for: lib.songs.first { $0.id == song.id }!) }
+        for song in [one, two] { _ = await lib.saveText(.lyrics, "new \(song.id)", for: lib.songs.first { $0.id == song.id }!) }
+
+        XCTAssertEqual(lib.songs.map(\.lyrics).sorted(), ["new \(one.id)", "new \(two.id)"].sorted())
+        XCTAssertNotEqual(lib.songs[0].folder, lib.songs[1].folder)
+        XCTAssertTrue(lib.songs.allSatisfy { $0.folder.hasPrefix("Intro ") })
+    }
 }
