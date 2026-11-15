@@ -16,9 +16,12 @@ final class MetronomeControl {
 
     func toggle() { running ? stop() : start() }
 
+    @ObservationIgnored var onStop: (() -> Void)?
+
     func stop() {
         metronome.stop()
         running = false
+        onStop?()
     }
 
     private func start() { running = (try? metronome.start(bpm: bpm, startSec: 0)) != nil }

@@ -1,5 +1,6 @@
 // The app's state holder; it only talks to the seams, `live()` is the one place that builds the real ones.
 import Observation
+import RehearsalAudio
 import RehearsalStore
 import SwiftUI
 
@@ -12,17 +13,27 @@ final class AppModel {
     let metronome = MetronomeControl()
     var recording = false
     var notice: String?
+    @ObservationIgnored private let deactivate: () -> Void
 
     init(
         library: SongLibrary? = nil,
         recorder: TakeRecording? = nil,
         player: TakePlaying? = nil,
-        prefs: SongPrefs? = nil
+        prefs: SongPrefs? = nil,
+        deactivate: @escaping () -> Void = { AudioSessionConfig.deactivate() }
     ) {
+        self.deactivate = deactivate
         self.prefs = prefs ?? SongPrefs()
         self.library = library ?? FakeSongLibrary()
         self.recorder = recorder ?? FakeTakeRecorder()
         self.player = player ?? FakeTakePlayer()
+        self.player.onIdle = { [weak self] in self?.restSession() }
+        metronome.onStop = { [weak self] in self?.restSession() }
+    }
+
+    /// Gives the audio session back once nothing records, plays or clicks, so other apps' music resumes.
+    func restSession() {
+        if !recording, !player.isPlaying, !metronome.running { deactivate() }
     }
 
     /// The real seams over the app's files; a store that cannot open falls back to memory, with a notice.
@@ -34,9 +45,11 @@ final class AppModel {
             failure = "The library could not be opened: \(error.localizedDescription)"
             store = try! Store()
         }
+        let prefs = SongPrefs()
         let model = AppModel(
             library: StoreSongLibrary(store: store, songsFolder: paths.songs),
-            recorder: StoreTakeRecorder(store: store, takesFolder: paths.takes), player: PackagePlayer())
+            recorder: StoreTakeRecorder(store: store, takesFolder: paths.takes, headsetInput: { prefs.headsetInput }),
+            player: PackagePlayer(), prefs: prefs)
         model.notice = failure
         return model
     }
@@ -51,6 +64,19 @@ final class AppModel {
     func stopTake() async {
         await recorder.stop()
         recording = false
+        notice = recorder.failure ?? notice
+        restSession()
+    }
+
+    func resumeTake() async {
+        await recorder.resume()
+        notice = recorder.failure ?? notice
+    }
+
+    /// At launch: raw takes a crash left become saved takes.
+    func recoverTakes() async {
+        let n = await recorder.recoverLeftovers()
+        if n > 0 { notice = n == 1 ? "A take from the last session was recovered." : "\(n) takes from the last session were recovered." }
     }
 
     func importURLs(_ urls: [URL]) async {

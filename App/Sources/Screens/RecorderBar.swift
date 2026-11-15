@@ -1,4 +1,5 @@
 // The bar that stays above the content while a take runs; never a dialog.
+// What a reader gets wrong: a call pauses the take, it never ends it; Resume continues the same take.
 import SwiftUI
 
 struct RecorderBar: View {
@@ -6,17 +7,32 @@ struct RecorderBar: View {
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 0.1)) { _ in
-            HStack(spacing: 16) {
-                Image(systemName: "circle.fill").foregroundStyle(model.recorder.paused ? .gray : .red)
-                Text(format(model.recorder.elapsed)).monospacedDigit()
-                ProgressView(value: min(1, model.recorder.level)).frame(maxWidth: .infinity)
-                Button {
-                    if model.recorder.paused { model.recorder.resume() } else { model.recorder.pause() }
-                } label: { Image(systemName: model.recorder.paused ? "play.fill" : "pause.fill") }
-                Button { Task { await model.stopTake() } } label: { Image(systemName: "stop.fill") }
+            VStack(spacing: 6) {
+                if let why = reason { Text(why).font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("pauseReason") }
+                HStack(spacing: 16) {
+                    Image(systemName: "circle.fill").foregroundStyle(model.recorder.paused ? .gray : .red)
+                    Text(format(model.recorder.elapsed)).monospacedDigit()
+                    ProgressView(value: min(1, model.recorder.level)).frame(maxWidth: .infinity)
+                    Button {
+                        if model.recorder.paused { Task { await model.resumeTake() } } else { model.recorder.pause() }
+                    } label: {
+                        if model.recorder.pauseCause == .user || !model.recorder.paused {
+                            Image(systemName: model.recorder.paused ? "play.fill" : "pause.fill")
+                        } else { Text("Resume").bold() }
+                    }
+                    Button { Task { await model.stopTake() } } label: { Image(systemName: "stop.fill") }
+                }
             }
             .padding(.horizontal).padding(.vertical, 10)
             .background(.bar)
+        }
+    }
+
+    private var reason: String? {
+        switch model.recorder.pauseCause {
+        case .interrupted: "Paused by a call or another app. The take is kept."
+        case .inputLost: "The microphone was lost. The take is kept."
+        default: nil
         }
     }
 

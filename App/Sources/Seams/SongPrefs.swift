@@ -8,11 +8,14 @@ final class SongPrefs {
     static let defaultLead = 1.0
     @ObservationIgnored private let defaults: UserDefaults
     private(set) var transposes: [String: Int]
+    /// The take's input may be a Bluetooth headset's microphone, at the price of narrowband sound.
+    var headsetInput: Bool { didSet { defaults.set(headsetInput, forKey: "headsetInput") } }
     var lyricsLead: Double { didSet { defaults.set(lyricsLead, forKey: "lyricsLead") } }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         transposes = defaults.dictionary(forKey: "songTranspose") as? [String: Int] ?? [:]
+        headsetInput = defaults.bool(forKey: "headsetInput")
         lyricsLead = defaults.object(forKey: "lyricsLead") as? Double ?? Self.defaultLead
     }
 

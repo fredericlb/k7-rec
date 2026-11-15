@@ -8,6 +8,7 @@ struct RehearsalApp: App {
     var body: some Scene {
         WindowGroup {
             RootView().environment(model)
+                .task { await model.recoverTakes() }
                 .task { await importFromLaunchArguments() }
         }
     }

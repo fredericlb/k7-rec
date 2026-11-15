@@ -1,5 +1,5 @@
 // Copies picked folders and audio files into the app's Songs folder and files them in the store.
-// What a reader gets wrong: a folder re-imports onto itself (same destination, same id), it never doubles.
+// What a reader gets wrong: the copy, not the source, carries the uuid (docs/app.md); a re-import reuses it.
 import AVFoundation
 import Foundation
 import RehearsalStore
@@ -23,8 +23,11 @@ struct SongImporter: Sendable {
         let isFolder = (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
         let fm = FileManager.default
         try fm.createDirectory(at: songs, withIntermediateDirectories: true)
-        let name = Self.safe(isFolder ? url.lastPathComponent : url.deletingPathExtension().lastPathComponent)
+        let picked = Self.safe(isFolder ? url.lastPathComponent : url.deletingPathExtension().lastPathComponent)
+        let tail = SongFolder.destinationName(for: url).suffix(8)
+        let name = isFolder ? Self.safe(SongFolder.destinationName(for: url)) : "\(picked) \(tail)"
         let dest = songs.appendingPathComponent(name, isDirectory: true)
+        let known = (try? SongFolder.read(dest, destination: name))?.song.uuid ?? ""
         if fm.fileExists(atPath: dest.path) { try fm.removeItem(at: dest) }
         if isFolder {
             try fm.copyItem(at: url, to: dest)
@@ -33,7 +36,12 @@ struct SongImporter: Sendable {
             try fm.copyItem(at: url, to: dest.appendingPathComponent("original." + url.pathExtension.lowercased()))
         }
         var (song, files) = try SongFolder.read(dest, destination: name)
-        if !isFolder { (song.title, song.artist) = await Self.tags(of: url, fallback: song.title) }
+        if song.uuid.isEmpty, !files.isEmpty {
+            try Self.stamp(uuid: known.isEmpty ? UUID().uuidString.lowercased() : known, in: dest)
+            (song, files) = try SongFolder.read(dest, destination: name)
+        }
+        if song.title == name { song.title = picked }
+        if !isFolder { (song.title, song.artist) = await Self.tags(of: url, fallback: picked) }
         guard !files.isEmpty else { try? fm.removeItem(at: dest); throw ImportError.nothingToImport }
         let (filed, rows) = (song, files)
         try await store.write { tx in
@@ -41,6 +49,14 @@ struct SongImporter: Sendable {
             for f in try tx.list(Query<SongFile>(where: [Filter("songId", equals: .text(filed.id))])) { try tx.delete(SongFile.self, f.id) }
             for f in rows { try tx.put(f) }
         }
+    }
+
+    /// Writes `uuid` into the copy's song.yaml, creating it when absent; the source is never touched.
+    static func stamp(uuid: String, in folder: URL) throws {
+        let yaml = folder.appendingPathComponent("song.yaml")
+        let old = (try? String(contentsOf: yaml, encoding: .utf8)) ?? ""
+        let kept = old.split(separator: "\n", omittingEmptySubsequences: false).filter { !$0.hasPrefix("uuid:") }.joined(separator: "\n")
+        try "uuid: \(uuid)\n\(kept)".write(to: yaml, atomically: true, encoding: .utf8)
     }
 
     /// A song named by its tags, or by `fallback` (the file name) when it has none.

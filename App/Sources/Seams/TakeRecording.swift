@@ -12,18 +12,27 @@ struct Take: Identifiable, Hashable {
     var audioURL: URL?
 }
 
+/// Why a take rests; `.user` is the person's own pause, the others come from the phone.
+enum PauseCause: Equatable { case user, inputLost, interrupted }
+
 @MainActor
 protocol TakeRecording: AnyObject {
     var level: Double { get }
     var elapsed: TimeInterval { get }
     var paused: Bool { get }
+    /// Set while paused: a call or a lost input leaves the take kept and waiting for Resume.
+    var pauseCause: PauseCause? { get }
+    /// Why the last take or start failed, nil when it did not.
+    var failure: String? { get }
     /// Newest first; a listing carries no envelope, `take(id:)` does.
     var takes: [Take] { get }
     /// Returns false when the microphone is refused or the input fails to open.
     func start(songID: String, title: String) async -> Bool
     func pause()
-    func resume()
+    func resume() async
     func stop() async
+    /// Saves the raw takes a crash left behind; returns how many came back.
+    @discardableResult func recoverLeftovers() async -> Int
     func take(id: String) async -> Take?
     func rename(id: String, title: String) async
     func delete(id: String) async
@@ -34,6 +43,8 @@ final class FakeTakeRecorder: TakeRecording {
     private var startedAt: Date?
     private var title = ""
     private(set) var paused = false
+    private(set) var pauseCause: PauseCause?
+    private(set) var failure: String?
     private(set) var takes: [Take] = [
         Take(id: "t1", title: "Blue Monday Jam", date: .now.addingTimeInterval(-86_400), duration: 213, envelope: Wave.fake.samples),
         Take(id: "t2", title: "Slow Waltz", date: .now.addingTimeInterval(-3_600), duration: 95, envelope: Wave.fake.samples),
@@ -49,8 +60,9 @@ final class FakeTakeRecorder: TakeRecording {
         return true
     }
 
-    func pause() { paused = true }
-    func resume() { paused = false }
+    func pause() { paused = true; pauseCause = .user }
+    func resume() async { paused = false; pauseCause = nil }
+    func recoverLeftovers() async -> Int { 0 }
 
     func stop() async {
         takes.insert(Take(id: UUID().uuidString, title: title, date: .now, duration: elapsed), at: 0)

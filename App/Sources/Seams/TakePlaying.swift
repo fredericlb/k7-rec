@@ -13,6 +13,8 @@ protocol TakePlaying: AnyObject {
     func toggle()
     func seek(to seconds: TimeInterval)
     func unload()
+    /// Called when playback stops by itself or by a pause: nothing of the player is audible any more.
+    var onIdle: (() -> Void)? { get set }
 }
 
 @MainActor
@@ -20,13 +22,14 @@ final class FakeTakePlayer: TakePlaying {
     private(set) var loadedID: String?
     private(set) var isPlaying = false
     private(set) var position: TimeInterval = 0
+    var onIdle: (() -> Void)?
 
     func load(id: String, url: URL) {
         if loadedID != id { position = 0; isPlaying = false }
         loadedID = id
     }
 
-    func toggle() { isPlaying.toggle() }
+    func toggle() { isPlaying.toggle(); if !isPlaying { onIdle?() } }
     func seek(to seconds: TimeInterval) { position = seconds }
     func unload() { loadedID = nil; isPlaying = false }
 }

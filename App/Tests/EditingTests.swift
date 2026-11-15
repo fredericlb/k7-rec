@@ -16,7 +16,7 @@ final class EditingTests: XCTestCase {
         let failure = await lib.importURLs([folder])
         XCTAssertNil(failure)
         for _ in 0..<100 where lib.songs.isEmpty || !lib.songs[0].hasChords { try? await Task.sleep(nanoseconds: 20_000_000) }
-        return (lib, store, root, root.appendingPathComponent("Songs/Blue"))
+        return (lib, store, root, root.appendingPathComponent("Songs/Blue 11111111"))
     }
 
     func testSavingATextRewritesTheFileAndTheRow() async throws {
@@ -27,7 +27,7 @@ final class EditingTests: XCTestCase {
         XCTAssertEqual(lib.songs[0].lyrics, "{{00:01}} Hello")
         XCTAssertTrue(lib.songs[0].hasLyrics)
         let rows = try await store.list(Query<SongFile>())
-        XCTAssertEqual(rows.filter { $0.kind == .lyrics }.map(\.path), ["Blue/lyrics.txt"])
+        XCTAssertEqual(rows.filter { $0.kind == .lyrics }.map(\.path), ["Blue 11111111/lyrics.txt"])
         _ = await lib.saveText(.lyrics, "again", for: lib.songs[0])
         let after = try await store.list(Query<SongFile>())
         XCTAssertEqual(after.filter { $0.kind == .lyrics }.count, 1)

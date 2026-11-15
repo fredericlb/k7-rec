@@ -28,7 +28,19 @@ mapped from the store's models, so a model change does not reach the views.
   the user can own, not the SQLite file. `AppPaths(root:)` moves all three into a temp folder for tests.
 - **Import copies, then files.** A picked folder or audio file is copied into `Songs/` (security-scoped
   access held only during the copy), then read by `SongFolder.read`. An audio file alone becomes a folder
-  holding `original.<ext>`, titled by its tags, else its file name. Re-importing the same name replaces it.
+  holding `original.<ext>`, titled by its tags, else its file name.
+- **A copy is named by `SongFolder.destinationName(for:)`** (its name plus 8 characters of its id), so two
+  songs of the same name never share a folder, and re-importing a folder replaces its own copy only.
+- **The copy, never the source, gets the uuid.** A picked folder with no uuid has one written into the
+  COPIED `song.yaml` (the source is read-only to us), the same uuid again when that folder is imported
+  again. The song's id then belongs to the copy and does not move with the picked folder's path.
+- **Takes survive a crash and a call.** A take paused by a call or a lost input stays on the recorder bar
+  with a Resume button; a resume on another input rate ends that part and continues it, which the
+  encoder joins. At launch, the raw takes a crash left are encoded and saved as "Recovered take" rows
+  with no song (the raw file does not know it); a raw file is deleted only after its row is saved.
+- **The audio session is given back** when nothing records, plays or clicks, so another app's music resumes.
+- **The headset microphone is a setting, off by default**: earphones then play in full quality and the
+  take uses the phone's microphone (`docs/audio.md`).
 - **A listing never carries a take's envelope**; the detail page loads it with `take(id:)`.
 - **The playhead is not part of the waveform.** `WaveformBars` is an `Equatable` Canvas fed only the
   samples; a separate overlay moves on a `TimelineView` that ticks only while playing.
