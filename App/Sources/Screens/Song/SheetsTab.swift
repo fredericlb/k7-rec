@@ -75,17 +75,22 @@ private struct ZoomableImage: UIViewRepresentable {
         scroll.minimumZoomScale = 1
         scroll.maximumZoomScale = 6
         scroll.delegate = context.coordinator
-        let image = UIImageView(image: UIImage(contentsOfFile: url.path))
+        let image = UIImageView()
         image.contentMode = .scaleAspectFit
         image.translatesAutoresizingMaskIntoConstraints = false
         scroll.addSubview(image)
+        // The content is pinned to the scrolling guide and at least the frame's size, so a zoomed image pans to its edges.
         NSLayoutConstraint.activate([
-            image.leadingAnchor.constraint(equalTo: scroll.frameLayoutGuide.leadingAnchor),
-            image.trailingAnchor.constraint(equalTo: scroll.frameLayoutGuide.trailingAnchor),
-            image.topAnchor.constraint(equalTo: scroll.frameLayoutGuide.topAnchor),
-            image.bottomAnchor.constraint(equalTo: scroll.frameLayoutGuide.bottomAnchor),
+            image.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor),
+            image.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor),
+            image.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor),
+            image.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor),
+            image.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor),
+            image.heightAnchor.constraint(equalTo: scroll.frameLayoutGuide.heightAnchor),
         ])
         context.coordinator.image = image
+        let file = url
+        Task { image.image = await Task.detached { SheetImage.load(file) }.value }
         return scroll
     }
 
