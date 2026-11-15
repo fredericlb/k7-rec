@@ -17,10 +17,28 @@ of its own: screens read and write through small protocols, and the packages are
 
 ## Seams
 
-`App/Sources/Seams/` holds `SongLibrary`, `TakeRecording` and `TakePlaying`, each with an in-memory fake.
-The shell compiles and runs with no package present, and integration replaces the three fakes in
-`AppModel`'s defaults: no screen changes. Seam types (`Song`, `Take`) are the app's own and are mapped
-from the store's models at the wiring point, so a model change does not reach the views.
+`App/Sources/Seams/` holds `SongLibrary`, `TakeRecording` and `TakePlaying`, each with an in-memory fake kept
+for previews and tests; `App/Sources/Live/` holds the real ones over the three packages, and
+`AppModel.live()` is the only place that builds them. Seam types (`Song`, `Take`) are the app's own and are
+mapped from the store's models, so a model change does not reach the views.
+
+- **The seams are `@MainActor` and the real ones `@Observable`**, so a list reads `model.library.songs` and
+  redraws when the store changes; the store is observed, never polled.
+- **Files live in Documents (`Songs/`, `Takes/`), the database in Application Support**: Files shows what
+  the user can own, not the SQLite file. `AppPaths(root:)` moves all three into a temp folder for tests.
+- **Import copies, then files.** A picked folder or audio file is copied into `Songs/` (security-scoped
+  access held only during the copy), then read by `SongFolder.read`. An audio file alone becomes a folder
+  holding `original.<ext>`, titled by its tags, else its file name. Re-importing the same name replaces it.
+- **A listing never carries a take's envelope**; the detail page loads it with `take(id:)`.
+- **The playhead is not part of the waveform.** `WaveformBars` is an `Equatable` Canvas fed only the
+  samples; a separate overlay moves on a `TimelineView` that ticks only while playing.
+- **Debug builds import `-ImportOnLaunch a:b`** (host paths), which lets the simulator be fed with no picker.
+
+## Device only
+
+Nothing here needs a phone to build, but these cannot be checked on the simulator or in the suite: the
+microphone permission prompt and a real `EngineInput` take, routing to speaker or Bluetooth, an
+interruption by a call, the system file picker's security-scoped URLs from iCloud, and what is audible.
 
 ## Screens
 

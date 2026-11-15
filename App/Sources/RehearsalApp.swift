@@ -8,6 +8,15 @@ struct RehearsalApp: App {
     var body: some Scene {
         WindowGroup {
             RootView().environment(model)
+                .task { await importFromLaunchArguments() }
         }
+    }
+
+    // Debug builds import the paths of `-ImportOnLaunch a:b` so the simulator needs no picker (docs/app.md).
+    private func importFromLaunchArguments() async {
+        #if DEBUG
+        guard let list = UserDefaults.standard.string(forKey: "ImportOnLaunch") else { return }
+        await model.importURLs(list.split(separator: ":").map { URL(fileURLWithPath: String($0)) })
+        #endif
     }
 }
