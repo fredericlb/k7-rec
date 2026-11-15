@@ -186,4 +186,67 @@ final class TakeRecorderTests: XCTestCase {
     rec.pause()
     XCTAssertEqual(rec.pauseReason, .user)
   }
+
+  func testResumeOnAnotherRateEndsTheTakeButKeepsWhatWasRecorded() async throws {
+    let input = FakeInput()
+    let rec = TakeRecorder(input: input, directory: dir, session: FakeSession())
+    try rec.start()
+    input.push(seconds: 1, amp: 0.3)
+    rec.pause()
+    input.sampleRate = 16_000
+    do {
+      try rec.resume()
+      XCTFail("expected rateChanged")
+    } catch RecorderError.rateChanged {}
+    XCTAssertFalse(input.running)
+    XCTAssertEqual(rec.status, .paused)
+    let r = try await rec.stop()
+    XCTAssertEqual(r.durationSec, 1, accuracy: 1e-6)
+    XCTAssertEqual(AVAudioFile.lengthSec(r.url), 1, accuracy: 0.15)
+  }
+
+  func testAFailedStartLeavesTheMicrophoneOff() {
+    let input = FakeInput()
+    let session = FakeSession()
+    let rec = TakeRecorder(input: input, directory: dir.appendingPathComponent("missing"), session: session)
+    XCTAssertThrowsError(try rec.start())
+    XCTAssertFalse(input.running)
+    XCTAssertEqual(rec.status, .idle)
+    XCTAssertFalse(session.observing)
+  }
+
+  func testRecoverFinishesARawTakeAndTheRawFileGoesOnConfirm() async throws {
+    let url = dir.appendingPathComponent("take-x.raw.caf")
+    let file = try RawTakeFile(url: url, sampleRate: 8000)
+    [Float](repeating: 0.3, count: 8000).withUnsafeBufferPointer { file.append($0) }
+    try file.close()
+    let r = try await TakeRecorder.recover(raw: url)
+    XCTAssertEqual(try peak(of: r.url), 0.9, accuracy: 0.05)
+    XCTAssertEqual(r.durationSec, 1, accuracy: 1e-6)
+    XCTAssertEqual(r.appliedGain, 3, accuracy: 0.01)
+    XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
+    r.confirmSaved()
+    XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
+  }
+
+  func testACrashedContinuationRecoversWithItsEarlierPart() async throws {
+    let input = FakeInput()
+    var rec: TakeRecorder? = TakeRecorder(input: input, directory: dir, session: FakeSession())
+    try rec!.start()
+    input.push(seconds: 1, amp: 0.2)
+    let a = try await rec!.stop()
+    a.confirmSaved()
+    rec = TakeRecorder(input: input, directory: dir, session: FakeSession())
+    try rec!.start(extending: ExistingTake(url: a.url, envelope: a.envelope))
+    input.push(seconds: 1, amp: 0.1)
+    rec = nil
+    try await Task.sleep(nanoseconds: 200_000_000)
+    let raw = try XCTUnwrap(TakeRecorder.leftovers(in: dir).first)
+    let r = try await TakeRecorder.recover(raw: raw)
+    XCTAssertEqual(r.offsetSec, a.durationSec, accuracy: 1e-6)
+    XCTAssertEqual(r.envelope.samples.count, 10)
+    XCTAssertEqual(Array(r.envelope.samples[0..<5]), a.envelope.samples)
+    r.confirmSaved()
+    XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: dir.path).sorted(), [a.url.lastPathComponent, r.url.lastPathComponent].sorted())
+  }
 }
