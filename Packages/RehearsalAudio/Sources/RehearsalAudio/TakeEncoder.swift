@@ -14,7 +14,6 @@ public enum TakeEncoder {
     }
   }
 
-  /// A low input rate (a Bluetooth headset's 16 kHz) gets a bit rate the encoder accepts.
   /// Writes `parts`, in order, each at its own gain, as one mono AAC file at `sampleRate`.
   public static func write(parts: [Part], to url: URL, sampleRate: Double, bitRate: Int = 128_000) throws {
     let settings: [String: Any] = [
@@ -36,7 +35,7 @@ public enum TakeEncoder {
     while file.framePosition < file.length {
       try file.read(into: inBuf, frameCount: chunk)
       if inBuf.frameLength == 0 { break }
-      let ready = try converted(inBuf, converter, dst)
+      let ready = try converted(inBuf, converter, dst, last: file.framePosition >= file.length)
       if let data = ready.floatChannelData, part.gain != 1 {
         var g = part.gain
         for c in 0..<Int(dst.channelCount) { vDSP_vsmul(data[c], 1, &g, data[c], 1, vDSP_Length(ready.frameLength)) }
@@ -45,16 +44,17 @@ public enum TakeEncoder {
     }
   }
 
-  private static func converted(_ buf: AVAudioPCMBuffer, _ converter: AVAudioConverter?, _ dst: AVAudioFormat) throws -> AVAudioPCMBuffer {
+  private static func converted(_ buf: AVAudioPCMBuffer, _ converter: AVAudioConverter?, _ dst: AVAudioFormat, last: Bool) throws -> AVAudioPCMBuffer {
     guard let converter else { return buf }
     let ratio = dst.sampleRate / buf.format.sampleRate
-    let cap = AVAudioFrameCount(Double(buf.frameLength) * ratio) + 64
+    let cap = AVAudioFrameCount(Double(buf.frameLength) * ratio) + 4096
     guard let out = AVAudioPCMBuffer(pcmFormat: dst, frameCapacity: cap) else { throw CocoaError(.fileWriteUnknown) }
     var fed = false
     var err: NSError?
     converter.convert(to: out, error: &err) { _, status in
       if fed {
-        status.pointee = .noDataNow
+        // The last chunk ends the stream, so the converter hands over the frames it holds back.
+        status.pointee = last ? .endOfStream : .noDataNow
         return nil
       }
       fed = true

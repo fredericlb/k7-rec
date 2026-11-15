@@ -150,6 +150,7 @@ public final class TakePlayer: PlaybackYielding {
   private func halt() {
     generation += 1
     node.stop()
+    engine.pause()
   }
 
   private func frame(_ sec: Double) -> Int { Int((max(0, sec) * rate).rounded()) }

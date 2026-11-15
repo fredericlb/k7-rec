@@ -1,4 +1,4 @@
-// RawTakeFile.swift: the take's raw input on disk as 16-bit CAF, written off the audio thread.
+// RawTakeFile.swift: the take's raw input on disk as 32-bit float CAF, written off the audio thread.
 // What reads wrong: it is the file a crash leaves behind, so it is never levelled and never deleted early.
 
 import AVFoundation
@@ -17,7 +17,7 @@ final class RawTakeFile: @unchecked Sendable {
       forWriting: url,
       settings: [
         AVFormatIDKey: kAudioFormatLinearPCM, AVSampleRateKey: sampleRate,
-        AVNumberOfChannelsKey: 1, AVLinearPCMBitDepthKey: 16,
+        AVNumberOfChannelsKey: 1, AVLinearPCMBitDepthKey: 32, AVLinearPCMIsFloatKey: true,
       ], commonFormat: .pcmFormatFloat32, interleaved: false)
   }
 

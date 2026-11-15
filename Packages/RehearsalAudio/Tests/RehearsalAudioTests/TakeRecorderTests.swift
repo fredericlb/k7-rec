@@ -249,4 +249,18 @@ final class TakeRecorderTests: XCTestCase {
     r.confirmSaved()
     XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: dir.path).sorted(), [a.url.lastPathComponent, r.url.lastPathComponent].sorted())
   }
+
+  func testContinuingAtAnotherRateJoinsWithoutLosingTheTail() async throws {
+    let input = FakeInput()
+    let first = TakeRecorder(input: input, directory: dir, session: FakeSession())
+    try first.start()
+    input.push(seconds: 1, amp: 0.3)
+    let a = try await first.stop()
+    input.sampleRate = 16_000
+    let second = TakeRecorder(input: input, directory: dir, session: FakeSession())
+    try second.start(extending: ExistingTake(url: a.url, envelope: a.envelope))
+    input.push(seconds: 1, amp: 0.3)
+    let b = try await second.stop()
+    XCTAssertEqual(AVAudioFile.lengthSec(b.url), 2, accuracy: 0.03)
+  }
 }

@@ -85,7 +85,7 @@ final class PlaybackTests: XCTestCase {
     XCTAssertEqual(p.positionSec, 0.5, accuracy: 0.1)
     p.pause()
     let held = p.positionSec
-    try render(e, frames: 2000)
+    XCTAssertFalse(e.isRunning)
     XCTAssertEqual(p.positionSec, held, accuracy: 1e-9)
     p.seek(to: 1.5)
     XCTAssertEqual(p.positionSec, 1.5, accuracy: 1e-3)
