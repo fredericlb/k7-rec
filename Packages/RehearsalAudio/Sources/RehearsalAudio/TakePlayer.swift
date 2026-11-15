@@ -24,12 +24,17 @@ public final class TakePlayer: PlaybackYielding {
   private var anchor = 0
   private var resumeFrame = 0
   private var generation = 0
+  private var lastFrame = 0
+  private let session: SessionHost
+  private var configObserver: NSObjectProtocol?
   // Offline rendering never reports played-back, so a test asks for consumed.
   var completionType = AVAudioPlayerNodeCompletionCallbackType.dataPlayedBack
 
   public init(
-    url: URL, gain: Double = 1, engine: AVAudioEngine = AVAudioEngine(), coordinator: PlaybackCoordinator? = nil
+    url: URL, gain: Double = 1, engine: AVAudioEngine = AVAudioEngine(), coordinator: PlaybackCoordinator? = nil,
+    session: SessionHost = SystemSession()
   ) throws {
+    self.session = session
     file = try AVAudioFile(forReading: url)
     rate = file.processingFormat.sampleRate
     self.engine = engine
@@ -42,6 +47,16 @@ public final class TakePlayer: PlaybackYielding {
     engine.connect(node, to: eq, format: file.processingFormat)
     engine.connect(eq, to: engine.mainMixerNode, format: file.processingFormat)
     eq.globalGain = Self.decibels(gain)
+    session.onInterruption = { [weak self] _ in MainActor.assumeIsolated { self?.pause() } }
+    session.observe()
+    configObserver = NotificationCenter.default.addObserver(
+      forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
+    ) { [weak self] _ in MainActor.assumeIsolated { self?.pause() } }
+  }
+
+  deinit {
+    session.unobserve()
+    if let o = configObserver { NotificationCenter.default.removeObserver(o) }
   }
 
   /// The playhead, in seconds from the start of the file.
@@ -61,7 +76,7 @@ public final class TakePlayer: PlaybackYielding {
   public func play() throws {
     guard state != .playing else { return }
     coordinator.claim(self)
-    try AudioSessionConfig.activate()
+    try session.activate(recording: false, headsetInput: false)
     if resumeFrame >= rangeEnd { resumeFrame = rangeStart }
     if !engine.isRunning { try engine.start() }
     schedule()
@@ -90,14 +105,18 @@ public final class TakePlayer: PlaybackYielding {
   public func yieldPlayback() { pause() }
 
   private var currentFrame: Int {
-    guard state == .playing, let t = node.lastRenderTime, let p = node.playerTime(forNodeTime: t) else { return resumeFrame }
-    return Playhead.frame(from: anchor, rangeStart: rangeStart, rangeEnd: rangeEnd, loops: loops, played: max(0, Int(p.sampleTime)))
+    guard state == .playing else { return resumeFrame }
+    // A stopped engine has no render time: the last position seen stands, so a pause keeps it.
+    guard let t = node.lastRenderTime, let p = node.playerTime(forNodeTime: t) else { return lastFrame }
+    lastFrame = Playhead.frame(from: anchor, rangeStart: rangeStart, rangeEnd: rangeEnd, loops: loops, played: max(0, Int(p.sampleTime)))
+    return lastFrame
   }
 
   private func schedule() {
     node.stop()
     generation += 1
     anchor = resumeFrame
+    lastFrame = resumeFrame
     queue(from: resumeFrame)
     if loops { queue(from: rangeStart) }
     node.play()

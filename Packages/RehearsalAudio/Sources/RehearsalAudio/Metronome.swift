@@ -61,13 +61,19 @@ public final class Metronome {
   /// Called as each click sounds, `downbeat` on the first of a bar.
   public var onBeat: ((Bool) -> Void)?
   private var engine: AVAudioEngine?
+  private let session: SessionHost
+  private var configObserver: NSObjectProtocol?
 
-  public init() {}
+  public init(session: SessionHost = SystemSession()) {
+    self.session = session
+    session.onInterruption = { [weak self] _ in MainActor.assumeIsolated { self?.stop() } }
+  }
 
   public func start(bpm: Double, startSec: Double) throws {
     stop()
     guard bpm > 0 else { return }
-    try AudioSessionConfig.activate()
+    try session.activate(recording: false, headsetInput: false)
+    session.observe()
     let engine = AVAudioEngine()
     let rate = engine.outputNode.outputFormat(forBus: 0).sampleRate
     var gen = ClickGenerator(bpm: bpm, sampleRate: rate > 0 ? rate : 44_100)
@@ -81,12 +87,18 @@ public final class Metronome {
     }
     engine.attach(src)
     engine.connect(src, to: engine.mainMixerNode, format: format)
+    configObserver = NotificationCenter.default.addObserver(
+      forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
+    ) { [weak self] _ in MainActor.assumeIsolated { self?.stop() } }
     try engine.start()
     self.engine = engine
     state = MetronomeState(bpm: bpm, startSec: startSec)
   }
 
   public func stop() {
+    session.unobserve()
+    if let o = configObserver { NotificationCenter.default.removeObserver(o) }
+    configObserver = nil
     engine?.stop()
     engine = nil
     state = nil

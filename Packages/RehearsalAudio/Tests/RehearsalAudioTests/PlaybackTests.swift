@@ -66,11 +66,11 @@ final class PlaybackTests: XCTestCase {
     XCTAssertEqual(whole, parts)
   }
 
-  private func offlinePlayer(seconds: Double) throws -> (TakePlayer, AVAudioEngine) {
+  private func offlinePlayer(seconds: Double, session: SessionHost = FakeSession()) throws -> (TakePlayer, AVAudioEngine) {
     let url = try TestAudio.wav(seconds: seconds, amp: 0.5)
     let engine = AVAudioEngine()
     try engine.enableManualRenderingMode(.offline, format: AVAudioFormat(standardFormatWithSampleRate: 8000, channels: 2)!, maximumFrameCount: 4096)
-    return (try TakePlayer(url: url, engine: engine, coordinator: PlaybackCoordinator()), engine)
+    return (try TakePlayer(url: url, engine: engine, coordinator: PlaybackCoordinator(), session: session), engine)
   }
 
   private func render(_ engine: AVAudioEngine, frames: AVAudioFrameCount) throws {
@@ -90,6 +90,36 @@ final class PlaybackTests: XCTestCase {
     p.seek(to: 1.5)
     XCTAssertEqual(p.positionSec, 1.5, accuracy: 1e-3)
     XCTAssertEqual(p.state, .paused)
+  }
+
+  func testAnInterruptionPausesThePlayerWhereItStood() throws {
+    let session = FakeSession()
+    let (p, e) = try offlinePlayer(seconds: 2, session: session)
+    try p.play()
+    try render(e, frames: 4000)
+    session.send(.began)
+    XCTAssertEqual(p.state, .paused)
+    XCTAssertEqual(p.positionSec, 0.5, accuracy: 0.1)
+    try p.play()
+    XCTAssertEqual(p.state, .playing)
+  }
+
+  func testAnEngineReconfigurationPausesThePlayer() async throws {
+    let (p, e) = try offlinePlayer(seconds: 2)
+    try p.play()
+    try render(e, frames: 2000)
+    NotificationCenter.default.post(name: .AVAudioEngineConfigurationChange, object: e)
+    try await Task.sleep(nanoseconds: 100_000_000)
+    XCTAssertEqual(p.state, .paused)
+  }
+
+  func testAnInterruptionStopsTheMetronome() throws {
+    let session = FakeSession()
+    let m = Metronome(session: session)
+    try m.start(bpm: 120, startSec: 0)
+    XCTAssertNotNil(m.state)
+    session.send(.began)
+    XCTAssertNil(m.state)
   }
 
   func testPlayerLoopsItsRange() throws {
