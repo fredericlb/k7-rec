@@ -34,6 +34,7 @@ struct SongsScreen: View {
                     Button("From Apple Music", systemImage: "music.note") { openPicker(cloud: false) }
                     Button("From Apple Music, streamed too", systemImage: "icloud") { openPicker(cloud: true) }
                 } label: { Image(systemName: "plus") }
+                    .accessibilityLabel("Import")
             }
             .sheet(item: $pickingMusic) { pick in
                 MediaPicker(cloud: pick == .streamed) { items in

@@ -145,3 +145,27 @@ final class ImportTests: XCTestCase {
         XCTAssertTrue(lib.songs.allSatisfy { $0.folder.hasPrefix("Intro ") })
     }
 }
+
+extension ImportTests {
+    func testAWaveIsDecodedOncePerFileVersion() async throws {
+        let (lib, _, root) = try library()
+        let wav = root.appendingPathComponent("Loop.wav")
+        try makeWav(at: wav, seconds: 1, amp: 0.5)
+        _ = await lib.importURLs([wav])
+        await lib.refresh()
+        let song = lib.songs[0]
+        let url = song.audioURL!
+        let stamp = try XCTUnwrap(FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate] as? Date)
+        let first = await lib.wave(of: song)
+        try makeWav(at: url, seconds: 2, amp: 0.5)
+        try FileManager.default.setAttributes([.modificationDate: stamp], ofItemAtPath: url.path)
+
+        let cached = await lib.wave(of: song)
+        try FileManager.default.setAttributes([.modificationDate: stamp.addingTimeInterval(5)], ofItemAtPath: url.path)
+        let fresh = await lib.wave(of: song)
+
+        XCTAssertEqual(first.duration, 1, accuracy: 0.05)
+        XCTAssertEqual(cached, first, "served from the cache while the file's date is the same")
+        XCTAssertEqual(fresh.duration, 2, accuracy: 0.05)
+    }
+}

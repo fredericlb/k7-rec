@@ -34,6 +34,8 @@ targets:
       path: Resources/Info.plist
       properties:
         CFBundleDisplayName: Rehearsal
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false

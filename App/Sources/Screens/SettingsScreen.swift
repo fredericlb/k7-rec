@@ -23,7 +23,7 @@ struct SettingsScreen: View {
                         Button("Open Settings") { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } }
                     }
                 } header: { Text("Apple Music") } footer: { Text("Songs you own are copied into the app; streamed ones can only be played here.") }
-                Section("About") { LabeledContent("Version", value: "0.1.0") }
+                Section("About") { LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "") }
             }
             .navigationTitle("Settings")
         }

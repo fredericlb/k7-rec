@@ -19,13 +19,27 @@ struct WaveformView: View {
                 PlayheadLayer(playing: playing, duration: duration, width: geo.size.width, seeks: seeks, position: position)
             }
             .contentShape(Rectangle())
-            .gesture(DragGesture(minimumDistance: 0).onChanged { drag in
-                guard duration > 0, geo.size.width > 0 else { return }
-                onSeek(min(max(drag.location.x / geo.size.width, 0), 1) * duration)
-                seeks += 1
+            .onTapGesture { location in seek(toX: location.x, in: geo.size.width) }
+            .gesture(DragGesture(minimumDistance: 8).onChanged { drag in
+                // A mostly vertical drag is the page scrolling, not a scrub.
+                if abs(drag.translation.width) > abs(drag.translation.height) { seek(toX: drag.location.x, in: geo.size.width) }
             })
         }
         .frame(height: 80)
+        .accessibilityElement()
+        .accessibilityLabel("Position")
+        .accessibilityValue(Text(clock(position())))
+        .accessibilityAdjustableAction { direction in
+            let step = direction == .increment ? 5.0 : -5.0
+            onSeek(min(max(position() + step, 0), duration))
+            seeks += 1
+        }
+    }
+
+    private func seek(toX x: CGFloat, in width: CGFloat) {
+        guard duration > 0, width > 0 else { return }
+        onSeek(min(max(x / width, 0), 1) * duration)
+        seeks += 1
     }
 }
 

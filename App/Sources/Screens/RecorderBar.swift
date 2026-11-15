@@ -11,8 +11,9 @@ struct RecorderBar: View {
                 if let why = reason { Text(why).font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("pauseReason") }
                 HStack(spacing: 16) {
                     Image(systemName: "circle.fill").foregroundStyle(model.recorder.paused ? .gray : .red)
+                        .accessibilityLabel(model.recorder.paused ? "Paused" : "Recording")
                     Text(format(model.recorder.elapsed)).monospacedDigit()
-                    ProgressView(value: min(1, model.recorder.level)).frame(maxWidth: .infinity)
+                    ProgressView(value: min(1, model.recorder.level)).frame(maxWidth: .infinity).accessibilityLabel("Input level")
                     Button {
                         if model.recorder.paused { Task { await model.resumeTake() } } else { model.recorder.pause() }
                     } label: {
@@ -20,7 +21,11 @@ struct RecorderBar: View {
                             Image(systemName: model.recorder.paused ? "play.fill" : "pause.fill")
                         } else { Text("Resume").bold() }
                     }
+                    .target()
+                    .accessibilityLabel(model.recorder.paused ? "Resume take" : "Pause take")
                     Button { Task { await model.stopTake() } } label: { Image(systemName: "stop.fill") }
+                        .target()
+                        .accessibilityLabel("Stop take")
                 }
             }
             .padding(.horizontal).padding(.vertical, 10)

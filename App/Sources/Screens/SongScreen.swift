@@ -86,7 +86,7 @@ struct SongScreen: View {
             .disabled(live.audioURL == nil && !live.isReference)
             Text(live.title).font(.headline).lineLimit(1).minimumScaleFactor(0.6)
             Spacer()
-            Button { menuOpen = true } label: { Image(systemName: "ellipsis").frame(width: 32, height: 32) }
+            Button { menuOpen = true } label: { Image(systemName: "ellipsis").target() }
                 .accessibilityLabel("Song menu")
                 .popover(isPresented: $menuOpen) {
                     SongMenu(
@@ -104,11 +104,13 @@ struct SongScreen: View {
     private func tabButton(_ tab: SongTab, icon: String? = nil) -> some View {
         Button { selected = tab } label: {
             Group { if let icon { Image(systemName: icon) } else { Text(tab.rawValue) } }
-                .padding(.horizontal, 10).padding(.vertical, 6)
+                .padding(.horizontal, 10).frame(minWidth: 44, minHeight: 44)
                 .background(current == tab ? Color.accentColor.opacity(0.2) : .clear, in: Capsule())
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(tab.rawValue)
+        .accessibilityAddTraits(current == tab ? .isSelected : [])
     }
 
     @ViewBuilder private var content: some View {

@@ -14,6 +14,7 @@ final class StoreSongLibrary: SongLibrary {
     @ObservationIgnored var rows: [RehearsalStore.Song] = [] { didSet { generation += 1 } }
     @ObservationIgnored var files: [SongFile] = [] { didSet { generation += 1 } }
     @ObservationIgnored private var generation = 0
+    @ObservationIgnored private var waves: [String: (modified: Int, wave: Wave)] = [:]
     @ObservationIgnored private var tasks: [Task<Void, Never>] = []
 
     init(store: Store, songsFolder: URL) {
@@ -41,9 +42,14 @@ final class StoreSongLibrary: SongLibrary {
 
     func wave(of song: Song) async -> Wave {
         guard let url = song.audioURL else { return Wave(samples: [], duration: 0) }
+        let date = (try? FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate] as? Date) ?? .distantPast
+        let modified = Int(date.timeIntervalSince1970 * 1000)
+        if let hit = waves[song.id], hit.modified == modified { return hit.wave }
         let read = await Task.detached { try? EnvelopeReader.read(url: url) }.value
         guard let read else { return Wave(samples: [], duration: 0) }
-        return Wave(samples: read.envelope.scaled(by: Gain.envelope(rawPeak: read.envelope.peak)).samples, duration: read.durationSec)
+        let wave = Wave(samples: read.envelope.scaled(by: Gain.envelope(rawPeak: read.envelope.peak)).samples, duration: read.durationSec)
+        waves[song.id] = (modified, wave)
+        return wave
     }
 
     /// Reads both collections again, so a caller sees its own write before the observation delivers it.

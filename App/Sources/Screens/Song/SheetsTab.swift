@@ -27,7 +27,7 @@ struct SheetsTab: View {
             if let sheet = picked {
                 SheetViewer(url: sheet.url).id(sheet.id)
             } else {
-                ContentUnavailableView("No sheets", systemImage: "doc", description: Text("Add one from the ⋮ menu."))
+                ContentUnavailableView("No sheets", systemImage: "doc", description: Text("Add one from the song menu."))
             }
         }
         .confirmationDialog("Remove this sheet?", isPresented: $confirmRemove, titleVisibility: .visible) {

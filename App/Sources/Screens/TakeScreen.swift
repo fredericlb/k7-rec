@@ -27,6 +27,7 @@ struct TakeScreen: View {
                 Button("Rename", systemImage: "pencil") { draft = take?.title ?? ""; renaming = true }
                 Button("Delete", systemImage: "trash", role: .destructive) { deleting = true }
             } label: { Image(systemName: "ellipsis") }
+                .accessibilityLabel("Take menu")
         }
         .alert("Rename take", isPresented: $renaming) {
             TextField("Title", text: $draft)
@@ -58,7 +59,7 @@ struct TakeScreen: View {
                 found: moments.found.map { $0.startSec...$0.endSec }, saved: moments.saved.map(\.span), pins: moments.pins.map(\.at)))
         HStack(spacing: 20) {
             Button { if let url = take.audioURL { model.togglePlay(id: take.id, url: url) } } label: {
-                Image(systemName: playing && model.player.range == nil ? "pause.circle.fill" : "play.circle.fill").font(.system(size: 44))
+                Image(systemName: playing && model.player.range == nil ? "pause.circle.fill" : "play.circle.fill").font(.largeTitle)
             }
             .accessibilityLabel(playing && model.player.range == nil ? "Pause" : "Play")
             Text(clock(take.duration)).monospacedDigit()

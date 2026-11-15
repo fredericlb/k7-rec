@@ -3,17 +3,18 @@ import SwiftUI
 
 struct DiagramsTab: View {
     let chords: [String]
+    @ScaledMetric private var cell = 90.0
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 12)], spacing: 16) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: cell + 14), spacing: 12)], spacing: 16) {
                 ForEach(chords, id: \.self) { symbol in
                     VStack(spacing: 4) {
                         Text(symbol).font(.headline)
                         if let f = ChordDiagrams.shared.fingering(for: symbol) {
-                            ChordDiagramView(fingering: f).frame(width: 90, height: 110)
+                            ChordDiagramView(fingering: f).frame(width: cell, height: cell * 11 / 9)
                         } else {
-                            Text("no diagram").font(.caption).foregroundStyle(.secondary).frame(width: 90, height: 110)
+                            Text("no diagram").font(.caption).foregroundStyle(.secondary).frame(width: cell, height: cell * 11 / 9)
                         }
                     }
                 }

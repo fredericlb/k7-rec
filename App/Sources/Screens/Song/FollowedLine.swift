@@ -10,6 +10,8 @@ extension View {
             .background(active == index ? Color.accentColor.opacity(0.22) : .clear, in: RoundedRectangle(cornerRadius: 6))
             .contentShape(Rectangle())
             .onTapGesture { if timed.contains(index) { onTap(index) } }
+            .accessibilityAddTraits(timed.contains(index) ? .isButton : [])
+            .accessibilityAction { if timed.contains(index) { onTap(index) } }
             .id(index)
     }
 }
