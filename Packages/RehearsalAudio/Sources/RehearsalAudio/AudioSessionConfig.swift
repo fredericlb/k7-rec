@@ -8,7 +8,7 @@ public enum AudioSessionConfig {
   public static func activate() throws {
     #if os(iOS)
     let s = AVAudioSession.sharedInstance()
-    try s.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP])
+    try s.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothHFP, .allowBluetoothA2DP])
     try s.setActive(true)
     #endif
   }
