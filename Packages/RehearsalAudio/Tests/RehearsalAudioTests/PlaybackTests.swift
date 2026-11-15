@@ -160,9 +160,23 @@ final class PlaybackTests: XCTestCase {
     XCTAssertEqual(p.positionSec, 0.6, accuracy: 1e-3)
   }
 
-  func testGainIsCappedAtTheEQsRange() {
-    XCTAssertEqual(TakePlayer.decibels(1), 0, accuracy: 1e-6)
-    XCTAssertEqual(TakePlayer.decibels(2), 6.02, accuracy: 0.01)
-    XCTAssertEqual(TakePlayer.decibels(32), 24)
+  func testGainReachesTheRecordersCapThroughTwoEQs() {
+    XCTAssertEqual(TakePlayer.decibels(1).0, 0, accuracy: 1e-6)
+    XCTAssertEqual(TakePlayer.decibels(2).0, 6.02, accuracy: 0.01)
+    let top = TakePlayer.decibels(Gain.maxGain)
+    XCTAssertEqual(Double(top.0 + top.1), 20 * log10(Gain.maxGain), accuracy: 0.01)
+    XCTAssertEqual(TakePlayer.decibels(1000).1, 24)
+  }
+
+  func testAGainOf32IsHeardAt32() throws {
+    let url = try TestAudio.wav(seconds: 1, amp: 0.02)
+    let engine = AVAudioEngine()
+    try engine.enableManualRenderingMode(.offline, format: AVAudioFormat(standardFormatWithSampleRate: 8000, channels: 1)!, maximumFrameCount: 4096)
+    let p = try TakePlayer(url: url, gain: Gain.maxGain, engine: engine, coordinator: PlaybackCoordinator(), session: FakeSession())
+    try p.play()
+    let buf = AVAudioPCMBuffer(pcmFormat: engine.manualRenderingFormat, frameCapacity: 4096)!
+    XCTAssertEqual(try engine.renderOffline(4096, to: buf), .success)
+    let peak = UnsafeBufferPointer(start: buf.floatChannelData![0], count: Int(buf.frameLength)).map { abs($0) }.max()!
+    XCTAssertEqual(peak, 0.64, accuracy: 0.03)
   }
 }
