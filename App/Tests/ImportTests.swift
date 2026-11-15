@@ -61,4 +61,68 @@ final class ImportTests: XCTestCase {
         XCTAssertNotNil(failure)
         XCTAssertTrue(lib.songs.isEmpty)
     }
+
+    private func wavSong(_ root: URL, _ name: String = "Intro") throws -> URL {
+        let wav = root.appendingPathComponent("\(name).wav")
+        try makeWav(at: wav, seconds: 1, amp: 0.5)
+        return wav
+    }
+
+    func testAReimportKeepsWhatWasMadeInTheApp() async throws {
+        let (lib, _, root) = try library()
+        let wav = try wavSong(root)
+        _ = await lib.importURLs([wav])
+        await lib.refresh()
+        let song = lib.songs[0]
+        let sheet = root.appendingPathComponent("score.pdf")
+        try Data("pdf".utf8).write(to: sheet)
+        _ = await lib.saveText(.lyrics, "la la", for: song)
+        _ = await lib.addSheet(from: sheet, to: lib.songs[0])
+        _ = await lib.setTags(["x"], for: lib.songs[0])
+
+        let failure = await lib.importURLs([wav])
+        await lib.refresh()
+
+        XCTAssertNil(failure)
+        XCTAssertEqual(lib.songs.count, 1)
+        XCTAssertEqual(lib.songs[0].lyrics, "la la")
+        XCTAssertEqual(lib.songs[0].sheets.map(\.name), ["score.pdf"])
+        XCTAssertEqual(lib.songs[0].tags, ["x"])
+        XCTAssertNotNil(lib.songs[0].audioURL)
+    }
+
+    func testACopyThatFailsKeepsTheOldSong() async throws {
+        let (lib, _, root) = try library()
+        let wav = try wavSong(root)
+        _ = await lib.importURLs([wav])
+        await lib.refresh()
+        _ = await lib.saveText(.lyrics, "keep me", for: lib.songs[0])
+        let before = lib.songs[0]
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: wav.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: wav.path) }
+
+        let failure = await lib.importURLs([wav])
+        await lib.refresh()
+
+        XCTAssertNotNil(failure)
+        XCTAssertEqual(lib.songs.count, 1)
+        XCTAssertEqual(lib.songs[0].lyrics, "keep me")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: before.audioURL!.path))
+        let left = try FileManager.default.contentsOfDirectory(atPath: lib.root.path)
+        XCTAssertFalse(left.contains { $0.hasPrefix(".importing") })
+    }
+
+    func testStampingKeepsAYamlThatStartsWithADocumentMarkerOneDocument() throws {
+        let dir = try tempFolder()
+        try "---\ntitle: T\nartist: X\ntags: [rock]\n".write(to: dir.appendingPathComponent("song.yaml"), atomically: true, encoding: .utf8)
+        try "Am".write(to: dir.appendingPathComponent("chords.txt"), atomically: true, encoding: .utf8)
+
+        try SongImporter.stamp(uuid: "aaaaaaaa-0000-0000-0000-000000000000", in: dir)
+        let (song, _) = try SongFolder.read(dir)
+
+        XCTAssertEqual(song.uuid, "aaaaaaaa-0000-0000-0000-000000000000")
+        XCTAssertEqual(song.title, "T")
+        XCTAssertEqual(song.artist, "X")
+        XCTAssertEqual(song.tags, ["rock"])
+    }
 }
