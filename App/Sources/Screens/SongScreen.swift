@@ -7,6 +7,9 @@ enum SongTab: String, CaseIterable {
     case chords = "Chords", diagrams = "Diagrams", lyrics = "Lyrics", tab = "Tab", sheets = "Sheets", info = "Info"
 }
 
+/// Which file the song's one importer is asked for.
+private enum PickKind { case sheet, lrc }
+
 struct SongScreen: View {
     @Environment(AppModel.self) private var model
     let song: Song
@@ -15,8 +18,8 @@ struct SongScreen: View {
     @State private var active: Int?
     @State private var menuOpen = false
     @State private var editing: TextKind?
-    @State private var pickingSheet = false
-    @State private var pickingLRC = false
+    @State private var picking: PickKind?
+    @State private var pickedKind: PickKind = .sheet
     private var live: Song { model.library.songs.first { $0.id == song.id } ?? song }
     private var playID: String { "song:" + song.id }
     private var playing: Bool {
@@ -61,11 +64,13 @@ struct SongScreen: View {
         .task(id: playing) { await follow() }
         .onChange(of: current) { refreshActive() }
         .sheet(item: $editing) { kind in TextEditorSheet(song: live, kind: kind) }
-        .fileImporter(isPresented: $pickingSheet, allowedContentTypes: [.pdf, .image]) { result in
-            if case .success(let url) = result { Task { await report(await model.library.addSheet(from: url, to: live)) } }
-        }
-        .fileImporter(isPresented: $pickingLRC, allowedContentTypes: [UTType(filenameExtension: "lrc") ?? .plainText, .plainText]) { result in
-            if case .success(let url) = result { Task { await importLRC(url) } }
+        .fileImporter(
+            isPresented: Binding(get: { picking != nil }, set: { if !$0 { picking = nil } }),
+            allowedContentTypes: picking == .lrc ? [UTType(filenameExtension: "lrc") ?? .plainText, .plainText] : [.pdf, .image]
+        ) { result in
+            let kind = pickedKind
+            guard case .success(let url) = result else { return }
+            Task { if kind == .lrc { await importLRC(url) } else { await report(await model.library.addSheet(from: url, to: live)) } }
         }
     }
 
@@ -86,8 +91,8 @@ struct SongScreen: View {
                     SongMenu(
                         song: live,
                         edit: { kind in menuOpen = false; editing = kind },
-                        addSheet: { menuOpen = false; pickingSheet = true },
-                        importLRC: { menuOpen = false; pickingLRC = true },
+                        addSheet: { menuOpen = false; picking = .sheet; pickedKind = .sheet },
+                        importLRC: { menuOpen = false; picking = .lrc; pickedKind = .lrc },
                         record: { menuOpen = false; Task { await model.startTake(song: live) } })
                         .presentationCompactAdaptation(.popover)
                 }
