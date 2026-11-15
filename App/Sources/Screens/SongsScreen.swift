@@ -17,6 +17,11 @@ struct SongsScreen: View {
                     }
                 }
             }
+            .overlay {
+                if model.library.songs.isEmpty {
+                    ContentUnavailableView("No songs yet", systemImage: "music.note.list", description: Text("Import a song folder or an audio file with +."))
+                }
+            }
             .navigationTitle("Songs")
             .navigationDestination(for: Song.self) { SongScreen(song: $0) }
             .toolbar {
@@ -30,7 +35,7 @@ struct SongsScreen: View {
                 allowedContentTypes: pickFolder ? [.folder] : [.audio],
                 allowsMultipleSelection: true
             ) { result in
-                if case .success(let urls) = result { model.library.importURLs(urls) }
+                if case .success(let urls) = result { Task { await model.importURLs(urls) } }
             }
         }
     }

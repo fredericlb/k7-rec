@@ -9,7 +9,9 @@ struct SongScreen: View {
     @Environment(AppModel.self) private var model
     let song: Song
     @State private var selected: SongTab
-    @State private var playing = false
+    @State private var wave = Wave(samples: [], duration: 0)
+    private var playID: String { "song:" + song.id }
+    private var playing: Bool { model.player.loadedID == playID && model.player.isPlaying }
 
     init(song: Song) {
         self.song = song
@@ -31,17 +33,26 @@ struct SongScreen: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Button { playing.toggle() } label: { Image(systemName: playing ? "pause.fill" : "play.fill") }
+                Button { if let url = song.audioURL { model.togglePlay(id: playID, url: url) } } label: {
+                    Image(systemName: playing ? "pause.fill" : "play.fill")
+                }
+                .disabled(song.audioURL == nil)
                 Text(song.title).font(.headline).lineLimit(1).minimumScaleFactor(0.6)
                 Spacer()
                 Menu {
                     Text("Added \(song.added.formatted(date: .abbreviated, time: .omitted))")
                     Button("Metronome", systemImage: "metronome") {}
                     Button("Transpose", systemImage: "plusminus") {}
-                    Button("Record a take", systemImage: "record.circle") { model.startTake(song: song) }
+                    Button("Record a take", systemImage: "record.circle") { Task { await model.startTake(song: song) } }
                 } label: { Image(systemName: "ellipsis") }
             }
             .padding(.horizontal).padding(.vertical, 8)
+            if let url = song.audioURL, !wave.samples.isEmpty {
+                WaveformView(
+                    samples: wave.samples, duration: wave.duration, playing: playing, position: { model.player.position },
+                    onSeek: { model.seek(id: playID, url: url, to: $0) })
+                    .padding(.horizontal)
+            }
             HStack {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack { ForEach(tabs, id: \.self) { tabButton($0) } }
@@ -53,6 +64,7 @@ struct SongScreen: View {
             content.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .navigationBarTitleDisplayMode(.inline)
+        .task { wave = await model.library.wave(of: song) }
     }
 
     private func tabButton(_ tab: SongTab, icon: String? = nil) -> some View {

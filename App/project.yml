@@ -9,11 +9,19 @@ settings:
     SWIFT_VERSION: "5.10"
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
+packages:
+  RehearsalText: {path: ../Packages/RehearsalText}
+  RehearsalAudio: {path: ../Packages/RehearsalAudio}
+  RehearsalStore: {path: ../Packages/RehearsalStore}
 targets:
   Rehearsal:
     type: application
     platform: iOS
     sources: [Sources, Resources]
+    dependencies:
+      - package: RehearsalText
+      - package: RehearsalAudio
+      - package: RehearsalStore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: se.frediver.rehearsal
@@ -43,8 +51,21 @@ targets:
         LSSupportsOpeningDocumentsInPlace: true
         NSMicrophoneUsageDescription: Rehearsal records your takes with the microphone.
         NSAppleMusicUsageDescription: Rehearsal lists the songs you own in Apple Music so you can rehearse them.
+  RehearsalTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests]
+    dependencies:
+      - target: Rehearsal
+      - package: RehearsalAudio
+      - package: RehearsalStore
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
 schemes:
   Rehearsal:
     build:
       targets:
         Rehearsal: all
+    test:
+      targets: [RehearsalTests]

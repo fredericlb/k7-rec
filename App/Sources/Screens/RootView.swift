@@ -1,4 +1,4 @@
-// Three tabs on iPhone, a sidebar on iPad (iOS 18 adaptive style); the recorder bar sits above the tabs.
+// Three tabs; the recorder bar sits above them while a take runs.
 import SwiftUI
 
 struct RootView: View {
@@ -14,5 +14,8 @@ struct RootView: View {
             if model.recording { RecorderBar().transition(.move(edge: .bottom)) }
         }
         .animation(.default, value: model.recording)
+        .alert("Rehearsal", isPresented: Binding(get: { model.notice != nil }, set: { if !$0 { model.notice = nil } })) {
+            Button("OK") {}
+        } message: { Text(model.notice ?? "") }
     }
 }

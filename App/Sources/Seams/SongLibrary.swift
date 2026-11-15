@@ -1,4 +1,4 @@
-// What the Songs screens need from the store; the real one wraps RehearsalStore.
+// What the Songs screens need from the store; the real one is Live/StoreSongLibrary.
 import Foundation
 
 struct Song: Identifiable, Hashable {
@@ -12,13 +12,24 @@ struct Song: Identifiable, Hashable {
     var chords = ""
     var lyrics = ""
     var added = Date()
+    var audioURL: URL?
 }
 
+/// A waveform: levelled RMS samples in 0...1 and the seconds they cover.
+struct Wave: Hashable {
+    var samples: [Double]
+    var duration: TimeInterval
+}
+
+@MainActor
 protocol SongLibrary: AnyObject {
     var songs: [Song] { get }
-    func importURLs(_ urls: [URL])
+    /// Imports folders and audio files; returns a message when something failed.
+    func importURLs(_ urls: [URL]) async -> String?
+    func wave(of song: Song) async -> Wave
 }
 
+@MainActor
 final class FakeSongLibrary: SongLibrary {
     private(set) var imported: [URL] = []
     let songs: [Song] = [
@@ -29,8 +40,14 @@ final class FakeSongLibrary: SongLibrary {
         Song(id: "3", title: "Untitled riff", artist: "", hasChords: false, hasLyrics: false),
     ]
 
-    func importURLs(_ urls: [URL]) {
+    func importURLs(_ urls: [URL]) async -> String? {
         imported += urls
-        for url in urls { print("import:", url.path) }
+        return nil
     }
+
+    func wave(of song: Song) async -> Wave { .fake }
+}
+
+extension Wave {
+    static let fake = Wave(samples: (0..<150).map { 0.15 + 0.8 * abs(sin(Double($0) / 7)) }, duration: 30)
 }

@@ -1,28 +1,45 @@
-// The Takes list, newest first; tapping a row plays it through the player seam.
+// The Takes list, newest first, with a red-dot button that starts a take and a row that opens it.
 import SwiftUI
 
 struct TakesScreen: View {
     @Environment(AppModel.self) private var model
-    @State private var playing: String?
 
     var body: some View {
         NavigationStack {
             List(model.recorder.takes) { take in
-                Button {
-                    if playing == take.id { model.player.stop(); playing = nil } else { model.player.play(id: take.id); playing = take.id }
-                } label: {
-                    HStack {
-                        Image(systemName: playing == take.id ? "stop.fill" : "play.fill")
-                        VStack(alignment: .leading) {
-                            Text(take.songTitle)
-                            Text(take.date.formatted(date: .abbreviated, time: .shortened)).font(.caption).foregroundStyle(.secondary)
+                HStack {
+                    Button {
+                        if let url = take.audioURL { model.togglePlay(id: take.id, url: url) }
+                    } label: {
+                        Image(systemName: model.player.loadedID == take.id && model.player.isPlaying ? "pause.fill" : "play.fill")
+                    }
+                    .buttonStyle(.borderless)
+                    NavigationLink(value: take.id) {
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(take.title)
+                                Text(take.date.formatted(date: .abbreviated, time: .shortened)).font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Text(String(format: "%d:%02d", Int(take.duration) / 60, Int(take.duration) % 60)).monospacedDigit()
                         }
-                        Spacer()
-                        Text(String(format: "%d:%02d", Int(take.duration) / 60, Int(take.duration) % 60)).monospacedDigit()
                     }
                 }
             }
+            .overlay {
+                if model.recorder.takes.isEmpty {
+                    ContentUnavailableView("No takes yet", systemImage: "waveform", description: Text("Press the red dot to record one."))
+                }
+            }
             .navigationTitle("Takes")
+            .navigationDestination(for: String.self) { TakeScreen(takeID: $0) }
+            .toolbar {
+                Button { Task { await model.startTake() } } label: {
+                    Image(systemName: "record.circle").foregroundStyle(.red)
+                }
+                .disabled(model.recording)
+                .accessibilityLabel("Record a take")
+            }
         }
     }
 }
