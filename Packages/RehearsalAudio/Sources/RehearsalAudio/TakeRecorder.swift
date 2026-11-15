@@ -179,6 +179,7 @@ public final class TakeRecorder: @unchecked Sendable {
     }
     input.stop()
     session.unobserve()
+    AudioSessionConfig.endRecording()
     continuation.finish()
     try snap.0.close()
     var b = snap.1
@@ -198,6 +199,7 @@ public final class TakeRecorder: @unchecked Sendable {
   public func discard() {
     input.stop()
     session.unobserve()
+    AudioSessionConfig.endRecording()
     continuation.finish()
     let r = locked { () -> RawTakeFile? in
       state = .stopped

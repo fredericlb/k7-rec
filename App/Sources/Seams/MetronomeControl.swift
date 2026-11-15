@@ -7,7 +7,13 @@ final class MetronomeControl {
     static let range = 30.0...300.0
     var bpm = 120.0
     private(set) var running = false
-    @ObservationIgnored private let metronome = Metronome()
+    @ObservationIgnored private let metronome: Metronome
+
+    init(metronome: Metronome? = nil) {
+        let click = metronome ?? Metronome()
+        self.metronome = click
+        click.onHalt = { [weak self] in self?.running = false; self?.onStop?() }
+    }
 
     func step(_ delta: Double) {
         bpm = min(max(bpm + delta, Self.range.lowerBound), Self.range.upperBound)

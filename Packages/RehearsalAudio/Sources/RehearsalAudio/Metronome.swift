@@ -66,6 +66,8 @@ public final class Metronome {
   public private(set) var state: MetronomeState?
   /// Called as each click reaches the speaker, `downbeat` on the first of a bar; never after `stop()`.
   public var onBeat: ((Bool) -> Void)?
+  /// Called when the system stopped the click (a call, a route change), never from `stop()`.
+  public var onHalt: (() -> Void)?
   private var engine: AVAudioEngine?
   private let session: SessionHost
   private var configObserver: NSObjectProtocol?
@@ -73,7 +75,7 @@ public final class Metronome {
 
   public init(session: SessionHost = SystemSession()) {
     self.session = session
-    session.onInterruption = { [weak self] _ in MainActor.assumeIsolated { self?.stop() } }
+    session.onInterruption = { [weak self] _ in MainActor.assumeIsolated { self?.halt() } }
   }
 
   public func start(bpm: Double, startSec: Double) throws {
@@ -100,10 +102,16 @@ public final class Metronome {
     engine.connect(src, to: engine.mainMixerNode, format: format)
     configObserver = NotificationCenter.default.addObserver(
       forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
-    ) { [weak self] _ in MainActor.assumeIsolated { self?.stop() } }
+    ) { [weak self] _ in MainActor.assumeIsolated { self?.halt() } }
     try engine.start()
     self.engine = engine
     state = MetronomeState(bpm: bpm, startSec: startSec)
+  }
+
+  private func halt() {
+    guard engine != nil else { return }
+    stop()
+    onHalt?()
   }
 
   public func stop() {

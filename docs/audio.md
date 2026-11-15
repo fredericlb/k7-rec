@@ -66,7 +66,11 @@ activation, so the Mac suite drives them with a fake. An interruption pauses the
 player (position kept) and the metronome; its end resumes nothing, because only the user knows
 whether the rehearsal goes on. `resume()` activates the session again, which an interruption
 deactivates. An engine reconfiguration (a route lost) stops the player and the metronome the
-same way.
+same way. The metronome says so through `onHalt` (never from `stop()`), so its owner stops
+showing a click that no longer runs.
+
+While a headset take runs, the click and playback keep its hands-free profile: dropping it would
+move the input to the built-in microphone and pause the take.
 
 ## A resume on another rate is an error, not a conversion
 

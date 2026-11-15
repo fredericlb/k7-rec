@@ -122,6 +122,29 @@ final class PlaybackTests: XCTestCase {
     XCTAssertNil(m.state)
   }
 
+  func testAnInterruptionTellsWhoWatchesButAStopDoesNot() throws {
+    let session = FakeSession()
+    let m = Metronome(session: session)
+    var halts = 0
+    m.onHalt = { halts += 1 }
+    try m.start(bpm: 120, startSec: 0)
+    m.stop()
+    XCTAssertEqual(halts, 0)
+    try m.start(bpm: 120, startSec: 0)
+    session.send(.began)
+    XCTAssertEqual(halts, 1)
+    session.send(.began)
+    XCTAssertEqual(halts, 1, "nothing runs to halt")
+  }
+
+  func testAHeadsetTakeKeepsItsProfileForTheClickUntilItEnds() {
+    XCTAssertFalse(AudioSessionConfig.wantsHFP(recording: false, headsetInput: false))
+    XCTAssertTrue(AudioSessionConfig.wantsHFP(recording: true, headsetInput: true))
+    XCTAssertTrue(AudioSessionConfig.wantsHFP(recording: false, headsetInput: false))
+    AudioSessionConfig.endRecording()
+    XCTAssertFalse(AudioSessionConfig.wantsHFP(recording: false, headsetInput: false))
+  }
+
   func testNoBeatIsReportedAfterStop() async throws {
     let m = Metronome(session: FakeSession())
     var beats = 0
