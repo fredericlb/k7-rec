@@ -30,7 +30,7 @@ extension Store {
         try await write { tx in
             guard let take = try tx.get(Take.self, id) else { return }
             try tx.delete(Take.self, id)
-            try Self.deleteRecordingPins(tx, take.audioPath)
+            if !take.audioPath.isEmpty { try Self.deleteRecordingPins(tx, take.audioPath) }
         }
     }
 
@@ -64,7 +64,7 @@ extension Store {
         }
     }
 
-    /// The moments cut from a recording, in the order they were made.
+    /// The moments cut from a recording, by where they start.
     public func moments(of recordingPath: String) async throws -> [Moment] {
         try await list(Query(where: [Filter("recordingPath", equals: .text(recordingPath))], orderBy: "startSec"))
     }

@@ -44,5 +44,7 @@ by the other. A code is stripped, with its one space, before a line is read.
 
 ## Departures from the TS
 
+
+- A time that is not finite formats as zero: the TS returns garbage there, Swift's `Int` would trap.
 - Maps are ordered arrays (`[LineTime]`), since the order of a `Map` is part of what `lineAt` returns.
 - `{ok:false, reason:"empty"}` is the case `LrcTimecoding.empty`.
