@@ -1,4 +1,5 @@
 // A scripted input recorded through the app's recorder lands as a Take row with envelope and gain.
+import AVFoundation
 import RehearsalStore
 import XCTest
 @testable import Rehearsal
@@ -34,6 +35,39 @@ final class RecordingTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appendingPathComponent(rows[0].audioPath).path))
         await settle { !rec.takes.isEmpty }
         XCTAssertEqual(rec.takes.map(\.title), ["Blue Monday"])
+    }
+
+    func testARunningTakeDrawsItsEnvelopeAndCountsItsMoments() async throws {
+        let input = ScriptedInput()
+        let (rec, _, _) = try recorder(input)
+        XCTAssertTrue(rec.liveSamples.isEmpty)
+        _ = await rec.start(songID: "", title: "Live")
+        input.push(seconds: 8, amp: 0.3)
+        await settle { rec.liveMoments == 1 }
+        XCTAssertEqual(rec.liveSamples.count, 150)
+        XCTAssertGreaterThan(rec.liveSamples.last ?? 0, 0.5)
+        XCTAssertEqual(rec.liveMoments, 1)
+        await rec.stop()
+        XCTAssertTrue(rec.liveSamples.isEmpty)
+        XCTAssertEqual(rec.liveMoments, 0)
+    }
+
+    func testAHighlightCarriesItsWaveformAndIsHeardWhileTheTakeRests() async throws {
+        let input = ScriptedInput()
+        let (rec, _, _) = try recorder(input)
+        _ = await rec.start(songID: "", title: "Live")
+        input.push(seconds: 8, amp: 0.3)
+        await settle { rec.highlights.count == 1 }
+        let h = try XCTUnwrap(rec.highlights.first)
+        XCTAssertFalse(h.samples.isEmpty)
+        let heard = try XCTUnwrap(rec.listen(to: h))
+        XCTAssertTrue(rec.paused, "listening rests the take, so the speaker is not recorded")
+        XCTAssertEqual(heard.span.lowerBound, h.span.lowerBound, accuracy: 0.001)
+        let file = try AVAudioFile(forReading: heard.url)
+        let length = Double(file.length) / file.processingFormat.sampleRate
+        XCTAssertGreaterThanOrEqual(length, h.span.upperBound - 0.3, "the raw file holds what the moment covers")
+        await rec.stop()
+        XCTAssertTrue(rec.highlights.isEmpty)
     }
 
     func testRefusedMicrophoneStartsNothing() async throws {

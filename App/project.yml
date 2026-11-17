@@ -7,32 +7,57 @@ options:
 settings:
   base:
     SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    DEVELOPMENT_TEAM: S5TM69LZLJ
+    CODE_SIGN_STYLE: Automatic
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
 packages:
   RehearsalText: {path: ../Packages/RehearsalText}
   RehearsalAudio: {path: ../Packages/RehearsalAudio}
   RehearsalStore: {path: ../Packages/RehearsalStore}
+  RehearsalStems: {path: ../Packages/RehearsalStems}
+  RehearsalFTP: {path: ../Packages/RehearsalFTP}
+  RehearsalSFTP: {path: ../Packages/RehearsalSFTP}
 targets:
   Rehearsal:
     type: application
-    platform: iOS
+    supportedDestinations: [iOS, macCatalyst]
     sources: [Sources, Resources]
     dependencies:
       - package: RehearsalText
       - package: RehearsalAudio
       - package: RehearsalStore
+      - package: RehearsalStems
+      - package: RehearsalFTP
+      - package: RehearsalSFTP
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: se.frediver.rehearsal
         PRODUCT_NAME: Rehearsal
         TARGETED_DEVICE_FAMILY: "1,2"
+        DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER: NO
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Resources/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    entitlements:
+      path: Resources/Rehearsal.entitlements
+      properties:
+        com.apple.developer.icloud-container-identifiers: [iCloud.se.frediver.rehearsal]
+        com.apple.developer.icloud-services: [CloudDocuments]
+        com.apple.developer.ubiquity-container-identifiers: [iCloud.se.frediver.rehearsal]
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+        com.apple.security.device.audio-input: true
+        com.apple.security.files.user-selected.read-write: true
     info:
       path: Resources/Info.plist
       properties:
+        NSUbiquitousContainers:
+          iCloud.se.frediver.rehearsal:
+            NSUbiquitousContainerIsDocumentScopePublic: true
+            NSUbiquitousContainerName: Rehearsal
+            NSUbiquitousContainerSupportedFolderLevels: Any
         CFBundleDisplayName: Rehearsal
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
@@ -51,17 +76,20 @@ targets:
         UIBackgroundModes: [audio]
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
+        NSLocalNetworkUsageDescription: Rehearsal connects to your file server to import audio files.
         NSMicrophoneUsageDescription: Rehearsal records your takes with the microphone.
-        NSAppleMusicUsageDescription: Rehearsal lists the songs you own in Apple Music so you can rehearse them.
+        ITSAppUsesNonExemptEncryption: false
   RehearsalTests:
     type: bundle.unit-test
-    platform: iOS
+    supportedDestinations: [iOS, macCatalyst]
     sources: [Tests]
     dependencies:
       - target: Rehearsal
       - package: RehearsalText
       - package: RehearsalAudio
       - package: RehearsalStore
+      - package: RehearsalStems
+      - package: RehearsalFTP
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

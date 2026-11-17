@@ -1,4 +1,4 @@
-// What the recorder bar and the Takes screens need from the audio package and the store.
+// What the Recording tab and the Takes screens need from the audio package and the store.
 import Foundation
 
 struct Take: Identifiable, Hashable {
@@ -15,11 +15,24 @@ struct Take: Identifiable, Hashable {
 /// Why a take rests; `.user` is the person's own pause, the others come from the phone.
 enum PauseCause: Equatable { case user, inputLost, interrupted }
 
+/// Where a moment of the running take can be heard.
+struct Listening { let url: URL; let span: ClosedRange<TimeInterval>; let gain: Double }
+
 @MainActor
 protocol TakeRecording: AnyObject {
     var level: Double { get }
     var elapsed: TimeInterval { get }
     var paused: Bool { get }
+    /// The last seconds of the running take, levelled 0...1 and padded on the left, ready to draw; empty when none runs.
+    var liveSamples: [Double] { get }
+    /// The take time at the left edge of `liveSamples`, to place the highlights over it.
+    var liveWindowStart: TimeInterval { get }
+    /// The moments the detector finds in the running take so far.
+    var liveMoments: Int { get }
+    /// The moments of the running take, newest last, each with the slice of waveform that draws it.
+    var highlights: [Highlight] { get }
+    /// Rests the take and says where to hear `highlight`: a file, the span in it and its playback gain; nil when it cannot be heard.
+    func listen(to highlight: Highlight) -> Listening?
     /// Set while paused: a call or a lost input leaves the take kept and waiting for Resume.
     var pauseCause: PauseCause? { get }
     /// Why the last take or start failed, nil when it did not.
@@ -56,6 +69,17 @@ final class FakeTakeRecorder: TakeRecording {
         Take(id: "t2", title: "Slow Waltz", date: .now.addingTimeInterval(-3_600), duration: 95, envelope: Wave.fake.samples),
     ]
 
+    var liveSamples: [Double] {
+        guard startedAt != nil else { return [] }
+        let t = elapsed
+        return (0..<150).map { 0.15 + 0.5 * abs(sin(Double($0) / 7 + t)) }
+    }
+    var liveWindowStart: TimeInterval { elapsed - LiveTake.windowSeconds }
+    var liveMoments: Int { highlights.count }
+    var highlights: [Highlight] {
+        (0..<Int(elapsed / 10)).map { Highlight(span: Double($0 * 10)...Double($0 * 10 + 6), samples: Wave.fake.samples) }
+    }
+    func listen(to highlight: Highlight) -> Listening? { pause(); return nil }
     var level: Double { paused || startedAt == nil ? 0 : 0.3 + 0.2 * sin(Date().timeIntervalSinceReferenceDate * 6) }
     var elapsed: TimeInterval { startedAt.map { Date().timeIntervalSince($0) } ?? 0 }
 

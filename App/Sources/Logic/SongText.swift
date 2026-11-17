@@ -62,10 +62,11 @@ enum SongText {
         }
     }
 
-    /// The chords re-timed after a lyrics edit; nil when they carry no timecodes of their own to keep.
-    static func retimedChords(chords: String, lyrics: String) -> String? {
-        guard LyricsTiming.hasTimecodes(chords), LyricsTiming.hasTimecodes(lyrics) else { return nil }
-        if case .ok(let text, _, _) = LRC.mergeTimedSheet(target: chords, timedSheet: lyrics) { return text }
+    /// The chords with the times of the lyrics line each sung line matches; nil when the lyrics carry no time or nothing is placed,
+    /// so the chords keep what was typed (docs/app.md).
+    static func timedChords(chords: String, lyrics: String) -> String? {
+        guard !chords.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, LyricsTiming.hasTimecodes(lyrics) else { return nil }
+        if case .ok(let text, let placed, _) = LRC.mergeTimedSheet(target: chords, timedSheet: lyrics), placed > 0 { return text }
         return nil
     }
 }

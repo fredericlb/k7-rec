@@ -8,6 +8,8 @@ final class SongPrefs {
     static let defaultLead = 1.0
     @ObservationIgnored private let defaults: UserDefaults
     private(set) var transposes: [String: Int]
+    /// The songs that play their instrumental version, the reader's choice per song.
+    private(set) var instrumentals: Set<String>
     /// The take's input may be a Bluetooth headset's microphone, at the price of narrowband sound.
     var headsetInput: Bool { didSet { defaults.set(headsetInput, forKey: "headsetInput") } }
     var lyricsLead: Double { didSet { defaults.set(lyricsLead, forKey: "lyricsLead") } }
@@ -15,8 +17,16 @@ final class SongPrefs {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         transposes = defaults.dictionary(forKey: "songTranspose") as? [String: Int] ?? [:]
+        instrumentals = Set(defaults.stringArray(forKey: "songInstrumental") ?? [])
         headsetInput = defaults.bool(forKey: "headsetInput")
         lyricsLead = defaults.object(forKey: "lyricsLead") as? Double ?? Self.defaultLead
+    }
+
+    func isInstrumental(_ songID: String) -> Bool { instrumentals.contains(songID) }
+
+    func setInstrumental(_ on: Bool, for songID: String) {
+        if on { instrumentals.insert(songID) } else { instrumentals.remove(songID) }
+        defaults.set(Array(instrumentals), forKey: "songInstrumental")
     }
 
     func transpose(of songID: String) -> Int { transposes[songID] ?? 0 }

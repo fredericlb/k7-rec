@@ -8,6 +8,10 @@ import RehearsalStore
 @Observable @MainActor
 final class StoreTakeRecorder: TakeRecording {
     private(set) var level = 0.0
+    private(set) var liveSamples: [Double] = []
+    private(set) var liveMoments = 0
+    private(set) var highlights: [Highlight] = []
+    var liveWindowStart: TimeInterval { live.windowStart }
     private(set) var paused = false
     private(set) var pauseCause: PauseCause?
     private(set) var takes: [Take] = []
@@ -22,6 +26,9 @@ final class StoreTakeRecorder: TakeRecording {
     @ObservationIgnored private var pending: (songID: String, title: String, date: Date)?
     @ObservationIgnored private var parts: [TakeResult] = []
     @ObservationIgnored private var watcher: Task<Void, Never>?
+    @ObservationIgnored private var live = LiveTake()
+    /// Told the id of every take the user deletes, so a synced library can announce it.
+    @ObservationIgnored var onDeleted: ((String) -> Void)?
     @ObservationIgnored private var tasks: [Task<Void, Never>] = []
 
     init(
@@ -85,6 +92,7 @@ final class StoreTakeRecorder: TakeRecording {
         guard let r = recorder, let info = pending else { return }
         failure = nil
         (recorder, pending, level, paused, pauseCause) = (nil, nil, 0, false, nil)
+        (live, liveSamples, liveMoments, highlights) = (LiveTake(), [], 0, [])
         watcher?.cancel()
         do {
             try await save(try await r.stop(), info)
@@ -94,6 +102,18 @@ final class StoreTakeRecorder: TakeRecording {
             failure = error.localizedDescription
         }
         parts = []
+    }
+
+    func listen(to highlight: Highlight) -> Listening? {
+        guard let r = recorder else { return nil }
+        if !paused { pause() }
+        let base = live.baseSeconds
+        let span = highlight.span
+        if span.lowerBound < base, let earlier = parts.last {
+            return Listening(url: earlier.url, span: span.lowerBound...min(span.upperBound, base), gain: 1)
+        }
+        guard let heard = r.listenable() else { return nil }
+        return Listening(url: heard.url, span: (span.lowerBound - base)...(span.upperBound - base), gain: heard.gain)
     }
 
     func take(id: String) async -> Take? {
@@ -111,18 +131,31 @@ final class StoreTakeRecorder: TakeRecording {
         // The app cuts no clip, so a moment cannot outlive the file it names (docs/app.md).
         try? await store.deleteTakeWithMoments(id)
         try? FileManager.default.removeItem(at: folder.appendingPathComponent(row.audioPath))
+        onDeleted?(id)
     }
 
     private func open(extending: ExistingTake?) throws {
         let r = TakeRecorder(input: makeInput(), directory: folder, session: makeSession(), headsetInput: headsetInput())
         try r.start(extending: extending)
         recorder = r
+        live = LiveTake(base: extending?.envelope.samples ?? [])
+        (liveSamples, liveMoments, highlights) = (live.window(), live.moments, live.highlights)
         watcher?.cancel()
         watcher = Task { [weak self] in
             for await e in r.events {
-                if case .level(let rms, _) = e { self?.level = min(1, Double(rms) * 3) } else if case .lost = e { self?.lost(r) }
+                switch e {
+                case .level(let rms, _): self?.level = min(1, Double(rms) * 3)
+                case .envelope(let index, let sample): self?.grow(index: index, sample: sample)
+                case .lost: self?.lost(r)
+                }
             }
         }
+    }
+
+    private func grow(index: Int, sample: Double) {
+        live.append(index: index, sample: sample)
+        (liveSamples, liveMoments) = (live.window(), live.moments)
+        if highlights != live.highlights { highlights = live.highlights }
     }
 
     private func lost(_ r: TakeRecorder) {

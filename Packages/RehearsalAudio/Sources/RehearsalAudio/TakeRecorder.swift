@@ -103,6 +103,13 @@ public final class TakeRecorder: @unchecked Sendable {
   /// The raw input's loudest sample so far, for a preview level.
   public var currentTruePeak: Double { locked { Double(truePeak) } }
 
+  /// The raw input so far and its playback gain, readable while the take rests; nil when no take runs.
+  public func listenable() -> (url: URL, gain: Double)? {
+    guard let file = locked({ raw }) else { return nil }
+    file.flush()
+    return (file.url, Gain.playback(truePeak: currentTruePeak))
+  }
+
   /// Starts a take, or continues `extending` one: the new part is joined to the old at stop.
   public func start(extending: ExistingTake? = nil) throws {
     try locked {

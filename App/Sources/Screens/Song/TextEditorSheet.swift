@@ -32,7 +32,12 @@ struct TextEditorSheet: View {
     }
 
     private func save() async {
-        let failure = kind == .lyrics ? await model.library.saveLyrics(text, for: song) : await model.library.saveText(kind, text, for: song)
+        let failure: String?
+        switch kind {
+        case .lyrics: failure = await model.library.saveLyrics(text, for: song)
+        case .chords: failure = await model.library.saveChords(text, for: song)
+        case .tabs: failure = await model.library.saveText(kind, text, for: song)
+        }
         if let failure { model.notice = failure } else { dismiss() }
     }
 }

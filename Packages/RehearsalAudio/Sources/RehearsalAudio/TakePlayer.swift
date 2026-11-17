@@ -56,7 +56,7 @@ public final class TakePlayer: PlaybackYielding {
     session.observe()
     configToken.set(
       NotificationCenter.default.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main) {
-        [weak self] _ in MainActor.assumeIsolated { self?.pause() }
+        [weak self] _ in MainActor.assumeIsolated { self?.configurationChanged() }
       })
   }
 
@@ -109,6 +109,21 @@ public final class TakePlayer: PlaybackYielding {
   }
 
   public func yieldPlayback() { pause() }
+
+  /// The engine's output changed. On the phone that is a route change (headphones out), and the song pauses; the Mac
+  /// reports one as the engine starts, so there the song goes on from where it stood (docs/mac.md).
+  private func configurationChanged() {
+    #if targetEnvironment(macCatalyst)
+    guard state == .playing else { return }
+    resumeFrame = currentFrame
+    do {
+      if !engine.isRunning { try engine.start() }
+      schedule()
+    } catch { pause() }
+    #else
+    pause()
+    #endif
+  }
 
   private var currentFrame: Int {
     guard state == .playing else { return resumeFrame }

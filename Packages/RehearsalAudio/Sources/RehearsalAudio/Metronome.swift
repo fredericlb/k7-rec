@@ -1,6 +1,7 @@
 // Metronome.swift: a click on the audio clock, a port of useMetronome.ts (a click every beat, an accent each bar).
 // What reads wrong: a beat callback is timed from the session's latency, so it is close to the click, not exact.
 
+import CoreAudio
 import AVFoundation
 
 /// A running metronome: tempo plus the waveform-timeline position it started at.

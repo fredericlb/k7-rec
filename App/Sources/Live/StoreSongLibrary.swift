@@ -70,7 +70,8 @@ final class StoreSongLibrary: SongLibrary {
 
     nonisolated static func build(_ rows: [RehearsalStore.Song], _ files: [SongFile], _ root: URL) -> [Song] {
         let bysong = Dictionary(grouping: files, by: \.songId)
-        return rows.map { row in
+        // A row an older version made for a streamed Apple Music song has no file to play; it stays in the store, unlisted.
+        return rows.filter { $0.source == .file }.map { row in
             let own = bysong[row.id] ?? []
             func text(_ kind: SongFileKind) -> String? {
                 own.first { $0.kind == kind }.flatMap { try? String(contentsOf: root.appendingPathComponent($0.path), encoding: .utf8) }
@@ -84,8 +85,7 @@ final class StoreSongLibrary: SongLibrary {
                 sheets: own.filter { $0.kind == .sheet }.map { SongSheet(id: $0.id, name: $0.name, url: root.appendingPathComponent($0.path)) },
                 folder: row.folder.isEmpty ? own.first.map { String($0.path.prefix { $0 != "/" }) } ?? "" : row.folder,
                 added: Date(timeIntervalSince1970: row.createdAt),
-                audioURL: own.first { $0.kind == .audio }.map { root.appendingPathComponent($0.path) },
-                referenceID: row.source == .appleMusicReference ? row.storeId : "")
+                audioURL: own.first { $0.kind == .audio }.map { root.appendingPathComponent($0.path) })
         }
     }
 }

@@ -50,6 +50,28 @@ final class EditingTests: XCTestCase {
         XCTAssertEqual(lib.songs[0].chords, "Am\n{{00:05.00}} Hello world")
     }
 
+    func testAddingChordsTimesThemFromTheLyrics() async throws {
+        let (lib, _, _, _) = try await imported()
+        _ = await lib.saveText(.lyrics, "{{00:05.00}} Hello world", for: lib.songs[0])
+        let failure = await lib.saveChords("Am\nHello world", for: lib.songs[0])
+        XCTAssertNil(failure)
+        XCTAssertEqual(lib.songs[0].chords, "Am\n{{00:05.00}} Hello world")
+    }
+
+    func testSavingLyricsTimesChordsThatHadNoTimeYet() async throws {
+        let (lib, _, _, _) = try await imported()
+        _ = await lib.saveText(.chords, "Am\nHello world", for: lib.songs[0])
+        _ = await lib.saveLyrics("{{00:05.00}} Hello world", for: lib.songs[0])
+        XCTAssertEqual(lib.songs[0].chords, "Am\n{{00:05.00}} Hello world")
+    }
+
+    func testChordsStayAsTypedWhenTheLyricsAreNotTimed() async throws {
+        let (lib, _, _, _) = try await imported()
+        _ = await lib.saveText(.lyrics, "Hello world", for: lib.songs[0])
+        _ = await lib.saveChords("Am\nHello world", for: lib.songs[0])
+        XCTAssertEqual(lib.songs[0].chords, "Am\nHello world")
+    }
+
     func testASheetIsCopiedInTheOrderAddedAndRemoved() async throws {
         let (lib, _, root, dir) = try await imported()
         let pdf = root.appendingPathComponent("score.pdf")

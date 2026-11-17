@@ -20,9 +20,6 @@ struct Song: Identifiable, Hashable {
     var folder = ""
     var added = Date()
     var audioURL: URL?
-    /// The Apple Music id of a song that can only be played, empty for a song with a file.
-    var referenceID = ""
-    var isReference: Bool { !referenceID.isEmpty }
 }
 
 /// A file of the song's `sheets/` folder, in the sidecar's order and under its name.
@@ -57,6 +54,12 @@ protocol SongLibrary: AnyObject {
     func addSheet(from url: URL, to song: Song) async -> String?
     func removeSheet(_ sheet: SongSheet, from song: Song) async -> String?
     func setTags(_ tags: [String], for song: Song) async -> String?
+    /// Reads the store again, so `songs` holds what an import just filed.
+    func refresh() async
+}
+
+extension SongLibrary {
+    func refresh() async {}
 }
 
 @MainActor

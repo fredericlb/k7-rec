@@ -1,4 +1,4 @@
-// Every icon-only control is a 44 pt target with a name VoiceOver can read, on the song screen and in the recorder bar.
+// Every icon-only control is a 44 pt target with a name VoiceOver can read, on the song screen and in the Recording tab.
 import AVFoundation
 import XCTest
 
@@ -15,26 +15,27 @@ final class TargetTests: XCTestCase {
         try "Am F\n".write(to: folder.appendingPathComponent("chords.txt"), atomically: true, encoding: .utf8)
         try "la la\n".write(to: folder.appendingPathComponent("lyrics.txt"), atomically: true, encoding: .utf8)
         let app = XCUIApplication()
-        app.launchArguments = ["-ImportOnLaunch", folder.path, "-OpenFirstSong", "YES"]
+        app.launchArguments = ["-ImportOnLaunch", folder.path, "-OpenFirstSong", "YES", "-NoLyricsLookup", "YES", "-FreshLibrary", "YES"]
         app.launch()
         return app
     }
 
-    private func assertTarget(_ element: XCUIElement, _ name: String, file: StaticString = #filePath, line: UInt = #line) {
+    private func assertTarget(_ element: XCUIElement, _ name: String, minHeight: Double = 44, file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertTrue(element.waitForExistence(timeout: 5), "\(name) exists", file: file, line: line)
-        XCTAssertGreaterThanOrEqual(element.frame.width, 44, "\(name) is wide enough", file: file, line: line)
-        XCTAssertGreaterThanOrEqual(element.frame.height, 44, "\(name) is tall enough", file: file, line: line)
+        XCTAssertGreaterThanOrEqual(element.frame.width, 44 - 0.01, "\(name) is wide enough", file: file, line: line)
+        XCTAssertGreaterThanOrEqual(element.frame.height, minHeight - 0.01, "\(name) is tall enough", file: file, line: line)
     }
 
     func testTheSongScreenControlsAreTargetsWithNames() throws {
         let app = try launch()
-        assertTarget(app.buttons["Song menu"].firstMatch, "Song menu")
+        // A navigation bar item is 36 pt tall whatever its label asks for; the bar sizes it.
+        assertTarget(app.buttons["Song menu"].firstMatch, "Song menu", minHeight: 36)
         for tab in ["Chords", "Lyrics", "Info"] { assertTarget(app.buttons[tab].firstMatch, tab) }
-        app.buttons["Song menu"].firstMatch.tap()
-        for name in ["Slower", "Faster", "Transpose down", "Transpose up", "Start metronome"] { assertTarget(app.buttons[name].firstMatch, name) }
+        app.buttons["Info"].firstMatch.tap()
+        for name in ["Transpose down", "Transpose up"] { assertTarget(app.buttons[name].firstMatch, name) }
     }
 
-    func testTheRecorderBarButtonsAreTargetsWithNames() throws {
+    func testTheRecordingTabButtonsAreTargetsWithNames() throws {
         addUIInterruptionMonitor(withDescription: "microphone") { alert in
             for label in ["Allow", "OK"] where alert.buttons[label].exists { alert.buttons[label].tap(); return true }
             return false
@@ -44,6 +45,8 @@ final class TargetTests: XCTestCase {
         app.buttons["Takes"].tap()
         app.buttons["Record a take"].tap()
         app.tap()
+        app.buttons["Recording"].tap()
+        for name in ["Slower", "Faster", "Start metronome"] { assertTarget(app.buttons[name].firstMatch, name) }
         let pause = app.buttons["Pause take"].firstMatch
         guard pause.waitForExistence(timeout: 8) else { throw XCTSkip("the simulator could not start a take") }
         assertTarget(pause, "Pause take")

@@ -1,15 +1,15 @@
 # k7-rec
 
-A native iOS app (SwiftUI, iOS 17) extracted from k7's rehearsal part: a song list with chords, lyrics,
-tabs and sheets, and a recorder with moments and markers. Everything is local: no account, no server,
-no synchronisation. Songs come from imported files (a song folder or an audio file) and from the
-Apple Music items the device can read.
+A native iPhone and Mac app (SwiftUI, iOS 17, Mac Catalyst) extracted from k7's rehearsal part: a song list with chords, lyrics,
+tabs and sheets, and a recorder with moments and markers. No account, no server of ours: songs and takes
+sync through the user's iCloud (`docs/sync.md`), on the iPhone and the Mac (`docs/mac.md`). Songs come from imported files (a song
+folder or an audio file), and an FTPS or SFTP server.
 
 ```
 App/        the app: project.yml (XcodeGen), SwiftUI sources, tests
 Packages/   RehearsalText (chords, lyrics, tablature), RehearsalAudio (recorder, player, moments),
-            RehearsalStore (SQLite documents, song folders)
-docs/       one page per zone: app, audio, store, text — choices, not mechanism
+            RehearsalStore (SQLite documents, song folders), RehearsalStems (stem separation and a mixing player), RehearsalFTP (an FTPS client), RehearsalSFTP (an SFTP client over Citadel)
+docs/       one page per zone: app, audio, stems, store, text, sync, server, mac — choices, not mechanism
 ```
 
 ## Build
@@ -18,7 +18,8 @@ docs/       one page per zone: app, audio, store, text — choices, not mechanis
 cd App && xcodegen generate            # the .xcodeproj is generated and ignored
 xcodebuild -project Rehearsal.xcodeproj -scheme Rehearsal \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
-(cd Packages/RehearsalText && swift test)   # same for RehearsalAudio and RehearsalStore
+(cd Packages/RehearsalText && swift test)   # same for RehearsalAudio, RehearsalStems, RehearsalStore, RehearsalFTP and RehearsalSFTP
+xcodebuild -project Rehearsal.xcodeproj -scheme Rehearsal -destination 'platform=macOS,variant=Mac Catalyst' build
 ```
 
 Third-party code: GRDB and Yams (MIT), and the guitar chord data of `@tombatossals/chords-db`

@@ -20,12 +20,26 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
-	<key>NSAppleMusicUsageDescription</key>
-	<string>Rehearsal lists the songs you own in Apple Music so you can rehearse them.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Rehearsal connects to your file server to import audio files.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Rehearsal records your takes with the microphone.</string>
+	<key>NSUbiquitousContainers</key>
+	<dict>
+		<key>iCloud.se.frediver.rehearsal</key>
+		<dict>
+			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
+			<true/>
+			<key>NSUbiquitousContainerName</key>
+			<string>Rehearsal</string>
+			<key>NSUbiquitousContainerSupportedFolderLevels</key>
+			<string>Any</string>
+		</dict>
+	</dict>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

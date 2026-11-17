@@ -50,11 +50,16 @@ final class SongTextTests: XCTestCase {
         XCTAssertEqual(e, .noTimedLines)
     }
 
-    func testChordsAreRetimedOnlyWhenTheyCarryTimecodes() {
+    func testChordsTakeTheTimesOfTheLyricsLineTheyMatch() {
         let lyrics = "{{00:05.00}} Hello world"
-        XCTAssertNil(SongText.retimedChords(chords: "Am\nHello world", lyrics: lyrics))
-        let retimed = SongText.retimedChords(chords: "Am\n{{00:01.00}} Hello world", lyrics: lyrics)
-        XCTAssertEqual(retimed, "Am\n{{00:05.00}} Hello world")
+        XCTAssertEqual(SongText.timedChords(chords: "Am\nHello world", lyrics: lyrics), "Am\n{{00:05.00}} Hello world")
+        XCTAssertEqual(SongText.timedChords(chords: "Am\n{{00:01.00}} Hello world", lyrics: lyrics), "Am\n{{00:05.00}} Hello world")
+    }
+
+    func testChordsStayAsTypedWhenTheLyricsHaveNoTimeOrNothingMatches() {
+        XCTAssertNil(SongText.timedChords(chords: "Am\nHello world", lyrics: "Hello world"))
+        XCTAssertNil(SongText.timedChords(chords: "Am\nSomething else", lyrics: "{{00:05.00}} Hello world"))
+        XCTAssertNil(SongText.timedChords(chords: "  \n", lyrics: "{{00:05.00}} Hello world"))
     }
 
     func testTranspositionIsKeptPerSongAndWrapsInsideAnOctave() {

@@ -4,6 +4,8 @@ import SwiftUI
 
 struct WaveformMarks: View, Equatable {
     let duration: TimeInterval
+    /// The time at the left edge, for a view onto a stretch of the take.
+    var start: TimeInterval = 0
     var floor: Double?
     var found: [ClosedRange<TimeInterval>] = []
     var saved: [ClosedRange<TimeInterval>] = []
@@ -12,7 +14,7 @@ struct WaveformMarks: View, Equatable {
     var body: some View {
         Canvas { context, size in
             guard duration > 0 else { return }
-            func x(_ t: TimeInterval) -> CGFloat { CGFloat(min(max(t / duration, 0), 1)) * size.width }
+            func x(_ t: TimeInterval) -> CGFloat { CGFloat(min(max((t - start) / duration, 0), 1)) * size.width }
             func band(_ span: ClosedRange<TimeInterval>, _ color: Color) {
                 context.fill(Path(CGRect(x: x(span.lowerBound), y: 0, width: max(2, x(span.upperBound) - x(span.lowerBound)), height: size.height)), with: .color(color))
             }

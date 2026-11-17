@@ -26,9 +26,9 @@ handed back nor parsed unless asked for. The unselected fields decode as zeros.
 
 ## A song's source
 
-A song carries `source` (`file`, the zero value, or `appleMusicReference`) and `storeId`. A reference
-song names an Apple Music track it can only play, so it has no audio `SongFile`; every row written before
-the field existed reads as `file` with no code to migrate it. A song also names its `folder` under the
+A song carries `source` (`file`, the zero value, or `appleMusicReference`) and `storeId`. The app no longer makes
+reference songs (Apple Music is not a source) and does not list one an older version left: the row stays in the
+store, unread. Every row written before the field existed reads as `file` with no code to migrate it. A song also names its `folder` under the
 songs folder, so the files made for it have one home whether or not it still has a file; a row with none
 reads as empty and the app falls back on the folder of its first file.
 

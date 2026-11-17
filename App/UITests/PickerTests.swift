@@ -14,7 +14,7 @@ final class PickerTests: XCTestCase {
         try file.write(from: buffer)
         try "la la\n".write(to: folder.appendingPathComponent("lyrics.txt"), atomically: true, encoding: .utf8)
         let app = XCUIApplication()
-        app.launchArguments = ["-ImportOnLaunch", folder.path, "-OpenFirstSong", "YES"]
+        app.launchArguments = ["-ImportOnLaunch", folder.path, "-OpenFirstSong", "YES", "-NoLyricsLookup", "YES", "-FreshLibrary", "YES"]
         app.launch()
         return app
     }

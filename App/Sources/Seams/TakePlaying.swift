@@ -11,6 +11,8 @@ protocol TakePlaying: AnyObject {
     /// Loads `url` under `id` unless it is already loaded; the one loaded before stops.
     func load(id: String, url: URL)
     func toggle()
+    /// The loaded file's playback gain, 1 for a levelled take.
+    func setGain(_ gain: Double)
     func seek(to seconds: TimeInterval)
     func unload()
     /// Called when playback stops by itself or by a pause: nothing of the player is audible any more.
@@ -36,6 +38,7 @@ final class FakeTakePlayer: TakePlaying {
         loadedID = id
     }
 
+    func setGain(_ gain: Double) {}
     func toggle() { isPlaying.toggle(); if !isPlaying { onIdle?() } }
     func seek(to seconds: TimeInterval) { position = seconds }
     func unload() { loadedID = nil; isPlaying = false }

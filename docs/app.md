@@ -9,7 +9,7 @@ of its own: screens read and write through small protocols, and the packages are
   `.pbxproj` merges badly and four branches touch this tree at once. XcodeGen (MIT, a dev tool, not
   linked into the app) is any `xcodegen` on the PATH; run `xcodegen generate` in `App/`.
 - **The Info.plist is generated from `project.yml`** (`info:`), so one file holds every key: microphone and
-  Apple Music usage strings, `UIFileSharingEnabled` (takes and songs show in the Files app), in-place
+  local network usage strings, `UIFileSharingEnabled` (takes and songs show in the Files app), in-place
   document opening, and the `audio` background mode so a take survives a locked screen.
 - **iOS 17, SwiftUI lifecycle, iPhone and iPad, all orientations on iPad.** iOS 17 gives `@Observable`
   and `ContentUnavailableView`; nothing needs UIKit app delegates.
@@ -39,12 +39,12 @@ mapped from the store's models, so a model change does not reach the views.
 - **A re-import refreshes the copy from the source and keeps what the app made.** The copy is built in a
   temporary folder, the texts and sheets the source lacks are carried over from the old copy, the tags stay
   when the sidecar has none, and the old copy is swapped for the new whole: a copy that fails leaves the song
-  as it was. The same rule holds for an Apple Music item picked again.
+  as it was.
 - **The copy, never the source, gets the uuid.** A picked folder with no uuid has one written into the
   COPIED `song.yaml` (the source is read-only to us), after a leading `---` when the file has one, and the
   same uuid again when that folder is imported again. The song's id then belongs to the copy and does not
   move with the picked folder's path.
-- **Takes survive a crash and a call.** A take paused by a call or a lost input stays on the recorder bar
+- **Takes survive a crash and a call.** A take paused by a call or a lost input stays on the Recording tab
   with a Resume button; a resume on another input rate ends that part and continues it, which the
   encoder joins; the first part's raw file goes once the continuation's own sidecar holds its audio. At
   launch, the raw takes a crash left are encoded and saved as "Recovered take" rows with no song (the raw
@@ -66,8 +66,7 @@ mapped from the store's models, so a model change does not reach the views.
 Nothing here needs a phone to build, but these cannot be checked on the simulator or in the suite: the
 microphone permission prompt and a real `EngineInput` take, routing to speaker or Bluetooth, an
 interruption by a call, the system file picker's security-scoped URLs from iCloud, what is audible, the
-metronome click through a speaker or Bluetooth, the Apple Music permission prompt and picker, a real
-export of an owned track, a streamed track playing and seeking, and a take recorded while one plays (the
+metronome click through a speaker or Bluetooth, and a take recorded while a song plays (the
 speaker is picked up by the microphone; headphones are not).
 
 ## Screens
@@ -76,8 +75,33 @@ speaker is picked up by the microphone; headphones are not).
 - **A song is one column of tabs** (`packages/ui-library/docs/songPlayer.md`): it opens on chords, else
   lyrics, else sheets; Info is last, an icon pinned right outside the scrolling row; the header holds play,
   the title and a menu. Back is the navigation bar's.
-- **The recorder is a bar, never a dialog** (`packages/recorder/docs/recorder.md`): a bottom safe-area
-  inset on the root view, so every tab and the song stay usable while a take runs.
+- **The recorder is a tab, never a dialog**: the Recording tab shows the running take (clock, waveform, moments,
+  pause and stop) or a Start button, and its icon turns red while a take runs; the other tabs and the song
+  stay usable meanwhile. Nothing sits above the tab bar.
+- **The tab draws the running take**: the last 30 seconds of its envelope, re-levelled to the loudest bucket so far
+  (`Logic/LiveTake.swift`), with the metronome right under it and the take's controls below.
+- **The moments found so far are listed under the controls**, each with its own slice of the waveform and a play
+  button. The detector runs at its default floor and silence; a moment still open counts once it is 4 seconds
+  long, so a row can change or vanish while the take grows. Playing one rests the take first, so the speaker is
+  never recorded, and reads the take's raw file (readable while it is written, flushed first) at the take's
+  playback gain; Resume or Stop silences it. A moment of an earlier part of a continued take plays from that part.
+  The take's page gives the final list.
+- **Lyrics come from LRCLIB at import, and again from the song menu.** A song that arrives without lyrics
+  (a file, a folder, a server file) is looked up on lrclib.net by title, artist and, for a file,
+  its duration; timed lyrics are saved in the app's own timecodes, else the words alone. Only those three
+  values leave the device, and only here. A failure never blocks the import: one notice says which songs
+  got nothing, and the song menu's "Download lyrics from LRCLIB" repeats the lookup. A song that already
+  has lyrics only gets timing from it: its words are never replaced.
+- **The song's header is the navigation bar**: back, then play and the title, the menu at the right. A bar item is 36 pt
+  tall whatever its label asks for, so those two are the one exception to the 44 pt rule.
+- **A file server can feed the import**: Settings connects one FTPS or SFTP server (`docs/server.md`), and Songs' + menu then
+  offers it. The import sheet browses folders and ticks audio files; they are downloaded and imported as picked files.
+  "Missing song" in the same menu asks for an artist and a title and adds them to `MISSING-SONGS.md` on the server.
+- **The chords take the lyrics' times.** Whenever the lyrics or the chords are saved (typed, imported from an LRC,
+  downloaded), each sung line of the chords takes the time of the lyrics line it matches (`LRC.mergeTimedSheet`,
+  the matching that times lyrics from an LRC), so a tap on a chord line seeks the song. It runs in the library,
+  where both texts are written, never in a screen. Lyrics with no time, or no line that matches, leave the chords
+  as typed.
 - **Import is the system document picker** (`fileImporter`) for folders and audio files; it hands the
   URLs to `SongLibrary.importURLs` and does nothing else. Security-scoped access belongs to the real library.
 - **Icons are SF Symbols.**
@@ -97,9 +121,10 @@ speaker is picked up by the microphone; headphones are not).
   chords and lyrics tabs and the diagrams; the files are never rewritten.
 - **Chords and tab are monospace, scrolled sideways, never wrapped**, since alignment is the data. The
   sideways scroll is nested in the vertical one: a two-axis `ScrollView` centres short content.
-- **The popover, not a menu, holds the song menu's controls** (`.presentationCompactAdaptation(.popover)`), and the
-  metronome lives in `AppModel`, so its click outlives the popover and a stop by the system (a call, a route
-  change) clears its running state. The popover is as wide as the screen allows, up to 400 pt.
+- **The popover, not a menu, holds the song menu's controls** (`.presentationCompactAdaptation(.popover)`); it is as
+  wide as the screen allows, up to 400 pt. The transposition sits in the song's Info tab. The metronome sits on the
+  Recording tab and lives in `AppModel`, so its click outlives any screen and a stop by the system (a call, a route
+  change) clears its running state.
 - **Texts are plain files of the song folder.** Saving writes the file, then rewrites the `SongFile` row in
   one transaction; an emptied text removes both. After a lyrics edit, chords that already carry timecodes
   are re-timed onto the new lyrics with `LRC.mergeTimedSheet`; untimed chords are left alone.
@@ -123,7 +148,7 @@ triad) and answers nil for what is not a chord; a card with no diagram shows its
   (another player taking the floor, an interruption, a route change), so the play button never shows
   "playing" over silence.
 - **A button a thumb must hit is 44 pt**, and an icon-only one is named for VoiceOver: the play buttons,
-  the recorder bar, the song menu's steppers, the tab chips. `UITests/TargetTests.swift` measures them on the
+  the Recording tab and its metronome, the Info tab's transposition, the tab chips. `UITests/TargetTests.swift` measures them on the
   simulator and `PlayTests.swift` taps the real play button.
 
 ## Moments and markers
@@ -144,28 +169,3 @@ triad) and answers nil for what is not a chord; a card with no diagram shows its
 - **A saved span is not saved twice**; an empty title becomes "Moment m:ss", an empty pin name "Marker".
 - **`UITests/MomentsShot.swift` takes screenshots** of the page when `TEST_RUNNER_SHOT_DIR` is set, over a
   take seeded by the debug launch argument `-SeedTake <audio path>`; it skips otherwise.
-
-## Apple Music as a song source
-
-- **What the sound allows decides the two modes.** A track the user owns (bought, ripped, synced from a
-  Mac) has an `assetURL` and its audio can be read; a streaming-subscription track has none, and Apple
-  gives no access to its sound, only playback. `hasProtectedAsset` counts as unreadable. `AppleMusic.plan`
-  is the one place that sorts an item: export a file, keep a reference, or skip it.
-- **A readable item is exported and becomes an ordinary song.** AAC in `Songs/<title> <id tail>/original.m4a`
-  (`AVAssetExportSession`), so it has a waveform, loops and moments like any file. Its uuid is `apple:` plus the
-  library's persistent id, and its folder is named once and kept: picking it again replaces its audio and
-  keeps its row, texts, sheets and tags. The export shows progress
-  and is cancellable; a cancelled item changes nothing, the ones already filed stay.
-- **A streamed item is a reference song**: a row of source `appleMusicReference` holding the store id, no
-  audio file. It plays through `MPMusicPlayerController.applicationMusicPlayer`, which needs no MusicKit
-  capability and so no developer-account entitlement. Its screen has play, pause and a seekable position
-  from `currentPlaybackTime`, and one line saying why there is no waveform; texts, sheets and takes work
-  as for any song.
-- **A reference plays under the session a take uses** (`.playAndRecord`, speaker by default): the player
-  activates it before playing, so the record bar starts a take over it as for any song. One thing plays at a
-  time: a file that plays gives way, and the session is kept while the reference plays.
-- **The picker lists owned tracks first** (`showsCloudItems = false`); a second menu entry also lists the
-  streamed ones, which is the only way to reach the reference mode. The permission is asked when the
-  picker is opened; a refusal opens nothing and writes nothing and says whether it is denied or restricted, and Settings
-  shows the state with a link to the system Settings.
-- **The library hides behind `MediaItemInfo`**, so mapping, export and refusal are tested with fakes.

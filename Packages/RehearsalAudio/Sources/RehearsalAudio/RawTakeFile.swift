@@ -33,6 +33,9 @@ final class RawTakeFile: @unchecked Sendable {
     }
   }
 
+  /// Waits for the queued writes, so the file read now holds everything heard so far.
+  func flush() { queue.sync {} }
+
   /// Waits for the queued writes and closes the file; throws the first write error.
   func close() throws {
     try queue.sync {

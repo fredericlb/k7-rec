@@ -9,7 +9,7 @@ final class PlayTests: XCTestCase {
         try writeWav(folder.appendingPathComponent("original.wav"))
         try "Am F\n".write(to: folder.appendingPathComponent("chords.txt"), atomically: true, encoding: .utf8)
         let app = XCUIApplication()
-        app.launchArguments = ["-ImportOnLaunch", folder.path, "-OpenFirstSong", "YES"]
+        app.launchArguments = ["-ImportOnLaunch", folder.path, "-OpenFirstSong", "YES", "-NoLyricsLookup", "YES", "-FreshLibrary", "YES"]
         app.launch()
         let play = app.buttons["Play"].firstMatch
         XCTAssertTrue(play.waitForExistence(timeout: 15))
