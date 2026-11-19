@@ -58,7 +58,7 @@ struct SongScreen: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { header }
-        .popover(isPresented: $menuOpen, attachmentAnchor: .point(.topTrailing), arrowEdge: .top) {
+        .popover(isPresented: $menuOpen, attachmentAnchor: .point(.topLeading), arrowEdge: .top) {
             SongMenu(
                 song: live,
                 edit: { kind in menuOpen = false; editing = kind },
@@ -76,6 +76,8 @@ struct SongScreen: View {
             wave = await model.library.wave(of: live)
         }
         .task(id: "\(playing)-\(current.rawValue)") { await follow() }
+        .onAppear { model.shownSong = live }
+        .onDisappear { if model.shownSong?.id == live.id { model.shownSong = nil } }
         .onChange(of: current) { refreshActive() }
         .onChange(of: stemsOpen) { hasStems = model.stems.existing(for: live) != nil }
         .sheet(isPresented: $stemsOpen) { StemsSheet(song: live) }
@@ -103,8 +105,7 @@ struct SongScreen: View {
         ToolbarItem(placement: .principal) {
             Text(live.title).font(.headline).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
         }
-        ToolbarItem(placement: .topBarTrailing) { RecButton(song: live) }
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItem(placement: .topBarLeading) {
             #if targetEnvironment(macCatalyst)
             // A popover anchored in the bar does not open under Catalyst; the Mac gets a menu of the same actions.
             Menu { actions() } label: { Image(systemName: "ellipsis").target() }

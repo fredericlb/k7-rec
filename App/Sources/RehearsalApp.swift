@@ -13,6 +13,15 @@ struct RehearsalApp: App {
                 .task { await model.recoverTakes() }
                 .task { await importFromLaunchArguments() }
         }
+        .commands {
+            CommandMenu("Recording") {
+                Button(model.recording ? "Show Take" : "Record") {
+                    if model.recording { model.recorderOpen = true } else { Task { await model.startTake(song: model.shownSong) } }
+                }
+                .keyboardShortcut("r", modifiers: .command)
+                Button("Metronome") { model.recorderOpen = true }
+            }
+        }
     }
 
     // Debug builds import the paths of `-ImportOnLaunch a:b` so the simulator needs no picker (docs/app.md).

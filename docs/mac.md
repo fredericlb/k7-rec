@@ -16,6 +16,12 @@ code base, so the library, the recorder, the stems and the sync are the same cod
   (`~/Library/Containers/se.frediver.rehearsal/Data/Documents/Models`); the stems it makes sync like any file.
 - **The song's ⋮ is a Menu on the Mac**, a popover on the iPhone: a popover anchored in a Catalyst toolbar does not
   open. Both lay out the same `SongActions`, so the two cannot drift.
+- **The rec button is an item of the window's title bar toolbar**, right of the tabs. The tab bar puts its tabs in
+  that `NSToolbar` and owns its delegate, so `MacRecToolbarItem` stands in front of that delegate, forwards
+  everything to it and adds one item; it re-joins if the tab bar replaces the toolbar. A SwiftUI view drawn up
+  into the title bar is not an option: the title bar takes its clicks. The LED is the item's image, redrawn
+  only when its shade changes. A toolbar item has no context menu, so the Mac reaches the metronome from a
+  Recording menu in the menu bar, beside Record (⌘R).
 - **Playback uses the `.playback` category on the Mac.** With `.playAndRecord` the engine reports a configuration
   change as it starts, and the player, which pauses on a route change, stopped at once. A take in progress keeps
   `.playAndRecord`; and if a configuration change still arrives while a song plays, the Mac restarts the engine

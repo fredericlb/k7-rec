@@ -35,7 +35,6 @@ struct TakesScreen: View {
             }
             .navigationTitle("Takes")
             .navigationDestination(for: String.self) { TakeScreen(takeID: $0) }
-            .recButton()
         }
     }
 }

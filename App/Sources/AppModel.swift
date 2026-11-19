@@ -19,6 +19,8 @@ final class AppModel {
     var recording = false
     /// Whether the take panel (controls, highlights, metronome) is shown over the current screen.
     var recorderOpen = false
+    /// The song whose page is open; a take started from the header belongs to it.
+    var shownSong: Song?
     private(set) var lyricsBusy = false
     /// True while the instrumental is being mixed from the stems.
     private(set) var mixing = false

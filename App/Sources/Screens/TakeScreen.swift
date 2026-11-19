@@ -23,11 +23,13 @@ struct TakeScreen: View {
         .navigationTitle(take?.title ?? "Take")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            Menu {
-                Button("Rename", systemImage: "pencil") { draft = take?.title ?? ""; renaming = true }
-                Button("Delete", systemImage: "trash", role: .destructive) { deleting = true }
-            } label: { Image(systemName: "ellipsis") }
-                .accessibilityLabel("Take menu")
+            ToolbarItem(placement: .topBarLeading) {
+                Menu {
+                    Button("Rename", systemImage: "pencil") { draft = take?.title ?? ""; renaming = true }
+                    Button("Delete", systemImage: "trash", role: .destructive) { deleting = true }
+                } label: { Image(systemName: "ellipsis") }
+                    .accessibilityLabel("Take menu")
+            }
         }
         .alert("Rename take", isPresented: $renaming) {
             TextField("Title", text: $draft)

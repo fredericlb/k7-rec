@@ -74,10 +74,15 @@ speaker is picked up by the microphone; headphones are not).
 - **Songs, Takes, Settings** as a plain `TabView`: a bottom bar on iPhone, a top bar on iPad (iOS 26). A sidebar needs `.sidebarAdaptable`, iOS 18 and later, so it waits for a deployment target above 17.
 - **A song is one column of tabs** (`packages/ui-library/docs/songPlayer.md`): it opens on chords, else
   lyrics, else sheets; Info is last, an icon pinned right outside the scrolling row; the header holds play,
-  the title and a menu. Back is the navigation bar's.
-- **Recording is one button, at the top right of every screen**: a tap starts a take where the person is,
-  with no change of screen; on a song's page the take belongs to that song. While a take runs, the button is
-  an LED lit by the input level (black, green, orange, red; `Logic/LevelLED.swift`), ringed red so a silent
+  the title and a menu, all on the leading side. Back is the navigation bar's.
+- **Recording is one button in the app's header, top right**, laid over the tab view, so it is the same
+  button on every screen: in the tab row on iPad, above the title on iPhone, in the title bar on the Mac
+  (`docs/mac.md`). A tap starts a take
+  where the person is, with no change of screen; while a song's page is open the take belongs to that song
+  (`AppModel.shownSong`). That corner is the button's alone: the screens put their own bar buttons (import,
+  the song's and the take's ⋮) on the leading side, since a bar item under the overlay could not be tapped. While a take runs, the button is
+  an LED lit by the input level on a decibel scale (black below -40 dB, green at -20, orange at -6, red
+  at full level; `Logic/LevelLED.swift`), since the linear level of a quiet room or a voice stays near zero, ringed red so a silent
   take still reads as recording, and a tap opens the take panel as a sheet (clock, waveform, moments, pause
   and stop). The metronome sits in the same panel, reached while idle from the button's context menu. The
   screens stay usable under a running take; nothing sits above the tab bar.

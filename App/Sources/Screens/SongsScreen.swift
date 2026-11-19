@@ -30,17 +30,18 @@ struct SongsScreen: View {
             .onChange(of: model.library.songs.count) { if DebugLaunch.openFirst, path.isEmpty, let s = model.library.songs.first { path = [s] } }
             .navigationTitle("Songs")
             .navigationDestination(for: Song.self) { SongScreen(song: $0) }
-            .recButton()
             .toolbar {
-                Menu {
-                    Button("Import a folder", systemImage: "folder") { pickFolder = true; picking = true }
-                    Button("Import audio files", systemImage: "waveform") { pickFolder = false; picking = true }
-                    if model.server.connected {
-                        Button("From the file server", systemImage: "externaldrive.connected.to.line.below") { browsingServer = true }
-                        Button("Missing song", systemImage: "questionmark.circle") { missingOpen = true }
-                    }
-                } label: { Image(systemName: "plus") }
-                    .accessibilityLabel("Import")
+                ToolbarItem(placement: .topBarLeading) {
+                    Menu {
+                        Button("Import a folder", systemImage: "folder") { pickFolder = true; picking = true }
+                        Button("Import audio files", systemImage: "waveform") { pickFolder = false; picking = true }
+                        if model.server.connected {
+                            Button("From the file server", systemImage: "externaldrive.connected.to.line.below") { browsingServer = true }
+                            Button("Missing song", systemImage: "questionmark.circle") { missingOpen = true }
+                        }
+                    } label: { Image(systemName: "plus") }
+                        .accessibilityLabel("Import")
+                }
             }
             .sheet(isPresented: $browsingServer) { ServerImportSheet() }
             .alert("Missing song", isPresented: $missingOpen) {
