@@ -19,6 +19,7 @@ struct SettingsScreen: View {
                 Section("About") { LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "") }
             }
             .navigationTitle("Settings")
+            .recButton()
         }
     }
 

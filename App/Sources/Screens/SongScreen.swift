@@ -65,7 +65,6 @@ struct SongScreen: View {
                 addSheet: { menuOpen = false; picking = .sheet; pickedKind = .sheet },
                 importLRC: { menuOpen = false; picking = .lrc; pickedKind = .lrc },
                 downloadLyrics: { menuOpen = false; Task { await model.downloadLyrics(for: live) } },
-                record: { menuOpen = false; Task { await model.startTake(song: live) } },
                 stems: { menuOpen = false; stemsOpen = true })
                 .presentationCompactAdaptation(.popover)
         }
@@ -104,6 +103,7 @@ struct SongScreen: View {
         ToolbarItem(placement: .principal) {
             Text(live.title).font(.headline).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
         }
+        ToolbarItem(placement: .topBarTrailing) { RecButton(song: live) }
         ToolbarItem(placement: .topBarTrailing) {
             #if targetEnvironment(macCatalyst)
             // A popover anchored in the bar does not open under Catalyst; the Mac gets a menu of the same actions.
@@ -123,7 +123,6 @@ struct SongScreen: View {
             addSheet: { picking = .sheet; pickedKind = .sheet },
             importLRC: { picking = .lrc; pickedKind = .lrc },
             downloadLyrics: { Task { await model.downloadLyrics(for: live) } },
-            record: { Task { await model.startTake(song: live) } },
             stems: { stemsOpen = true })
     }
 

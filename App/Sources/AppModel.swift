@@ -17,6 +17,8 @@ final class AppModel {
     let server: ServerAccount
     let metronome = MetronomeControl()
     var recording = false
+    /// Whether the take panel (controls, highlights, metronome) is shown over the current screen.
+    var recorderOpen = false
     private(set) var lyricsBusy = false
     /// True while the instrumental is being mixed from the stems.
     private(set) var mixing = false

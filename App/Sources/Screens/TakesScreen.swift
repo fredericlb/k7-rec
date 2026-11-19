@@ -35,13 +35,7 @@ struct TakesScreen: View {
             }
             .navigationTitle("Takes")
             .navigationDestination(for: String.self) { TakeScreen(takeID: $0) }
-            .toolbar {
-                Button { Task { await model.startTake() } } label: {
-                    Image(systemName: "record.circle").foregroundStyle(.red)
-                }
-                .disabled(model.recording)
-                .accessibilityLabel("Record a take")
-            }
+            .recButton()
         }
     }
 }

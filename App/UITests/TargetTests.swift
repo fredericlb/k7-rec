@@ -1,4 +1,4 @@
-// Every icon-only control is a 44 pt target with a name VoiceOver can read, on the song screen and in the Recording tab.
+// Every icon-only control is a 44 pt target with a name VoiceOver can read, on the song screen, the rec button and the take panel.
 import AVFoundation
 import XCTest
 
@@ -35,7 +35,7 @@ final class TargetTests: XCTestCase {
         for name in ["Transpose down", "Transpose up"] { assertTarget(app.buttons[name].firstMatch, name) }
     }
 
-    func testTheRecordingTabButtonsAreTargetsWithNames() throws {
+    func testTheRecButtonAndTakePanelAreTargetsWithNames() throws {
         addUIInterruptionMonitor(withDescription: "microphone") { alert in
             for label in ["Allow", "OK"] where alert.buttons[label].exists { alert.buttons[label].tap(); return true }
             return false
@@ -43,9 +43,12 @@ final class TargetTests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
         app.buttons["Takes"].tap()
-        app.buttons["Record a take"].tap()
+        assertTarget(app.buttons["Record a take"].firstMatch, "Record a take", minHeight: 36)
+        app.buttons["Record a take"].firstMatch.tap()
         app.tap()
-        app.buttons["Recording"].tap()
+        let led = app.buttons["Take running"].firstMatch
+        guard led.waitForExistence(timeout: 8) else { throw XCTSkip("the simulator could not start a take") }
+        led.tap()
         for name in ["Slower", "Faster", "Start metronome"] { assertTarget(app.buttons[name].firstMatch, name) }
         let pause = app.buttons["Pause take"].firstMatch
         guard pause.waitForExistence(timeout: 8) else { throw XCTSkip("the simulator could not start a take") }

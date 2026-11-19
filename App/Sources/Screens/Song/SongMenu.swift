@@ -1,4 +1,4 @@
-// The ⋮ popover: the date and the buttons that add texts and sheets, fetch lyrics, split stems and record.
+// The ⋮ popover: the date and the buttons that add texts and sheets, fetch lyrics and split stems.
 // What a reader gets wrong: it is a popover on the iPhone, so a control is used in place; the Mac lists the same actions in a Menu.
 import SwiftUI
 
@@ -8,14 +8,13 @@ struct SongMenu: View {
     let addSheet: () -> Void
     let importLRC: () -> Void
     let downloadLyrics: () -> Void
-    let record: () -> Void
     let stems: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Added \(song.added.formatted(date: .abbreviated, time: .omitted))").font(.caption).foregroundStyle(.secondary)
             Divider()
-            SongActions(song: song, edit: edit, addSheet: addSheet, importLRC: importLRC, downloadLyrics: downloadLyrics, record: record, stems: stems)
+            SongActions(song: song, edit: edit, addSheet: addSheet, importLRC: importLRC, downloadLyrics: downloadLyrics, stems: stems)
         }
         .padding()
         .frame(minWidth: 280, idealWidth: 360, maxWidth: 400)
@@ -31,7 +30,6 @@ struct SongActions: View {
     let addSheet: () -> Void
     let importLRC: () -> Void
     let downloadLyrics: () -> Void
-    let record: () -> Void
     let stems: () -> Void
 
     var body: some View {
@@ -44,7 +42,6 @@ struct SongActions: View {
                 .disabled(model.lyricsBusy)
             Button("Add a sheet", systemImage: "doc.badge.plus") { addSheet() }
             Button("Separate into stems", systemImage: "waveform.path") { stems() }.disabled(song.audioURL == nil)
-            Button("Record a take", systemImage: "record.circle") { record() }
         }
     }
 

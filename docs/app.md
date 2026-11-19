@@ -44,7 +44,7 @@ mapped from the store's models, so a model change does not reach the views.
   COPIED `song.yaml` (the source is read-only to us), after a leading `---` when the file has one, and the
   same uuid again when that folder is imported again. The song's id then belongs to the copy and does not
   move with the picked folder's path.
-- **Takes survive a crash and a call.** A take paused by a call or a lost input stays on the Recording tab
+- **Takes survive a crash and a call.** A take paused by a call or a lost input stays in the take panel
   with a Resume button; a resume on another input rate ends that part and continues it, which the
   encoder joins; the first part's raw file goes once the continuation's own sidecar holds its audio. At
   launch, the raw takes a crash left are encoded and saved as "Recovered take" rows with no song (the raw
@@ -75,10 +75,13 @@ speaker is picked up by the microphone; headphones are not).
 - **A song is one column of tabs** (`packages/ui-library/docs/songPlayer.md`): it opens on chords, else
   lyrics, else sheets; Info is last, an icon pinned right outside the scrolling row; the header holds play,
   the title and a menu. Back is the navigation bar's.
-- **The recorder is a tab, never a dialog**: the Recording tab shows the running take (clock, waveform, moments,
-  pause and stop) or a Start button, and its icon turns red while a take runs; the other tabs and the song
-  stay usable meanwhile. Nothing sits above the tab bar.
-- **The tab draws the running take**: the last 30 seconds of its envelope, re-levelled to the loudest bucket so far
+- **Recording is one button, at the top right of every screen**: a tap starts a take where the person is,
+  with no change of screen; on a song's page the take belongs to that song. While a take runs, the button is
+  an LED lit by the input level (black, green, orange, red; `Logic/LevelLED.swift`), ringed red so a silent
+  take still reads as recording, and a tap opens the take panel as a sheet (clock, waveform, moments, pause
+  and stop). The metronome sits in the same panel, reached while idle from the button's context menu. The
+  screens stay usable under a running take; nothing sits above the tab bar.
+- **The panel draws the running take**: the last 30 seconds of its envelope, re-levelled to the loudest bucket so far
   (`Logic/LiveTake.swift`), with the metronome right under it and the take's controls below.
 - **The moments found so far are listed under the controls**, each with its own slice of the waveform and a play
   button. The detector runs at its default floor and silence; a moment still open counts once it is 4 seconds
@@ -127,8 +130,8 @@ speaker is picked up by the microphone; headphones are not).
   the rest of the page. What comes before the first system (title, tuning, legend) folds behind a
   "Show header" button; VoiceOver reads a system string by string, frets only, never the dashes.
 - **The popover, not a menu, holds the song menu's controls** (`.presentationCompactAdaptation(.popover)`); it is as
-  wide as the screen allows, up to 400 pt. The transposition sits in the song's Info tab. The metronome sits on the
-  Recording tab and lives in `AppModel`, so its click outlives any screen and a stop by the system (a call, a route
+  wide as the screen allows, up to 400 pt. The transposition sits in the song's Info tab. The metronome sits in the
+  take panel and lives in `AppModel`, so its click outlives any screen and a stop by the system (a call, a route
   change) clears its running state.
 - **Texts are plain files of the song folder.** Saving writes the file, then rewrites the `SongFile` row in
   one transaction; an emptied text removes both. After a lyrics edit, chords that already carry timecodes
@@ -153,7 +156,7 @@ triad) and answers nil for what is not a chord; a card with no diagram shows its
   (another player taking the floor, an interruption, a route change), so the play button never shows
   "playing" over silence.
 - **A button a thumb must hit is 44 pt**, and an icon-only one is named for VoiceOver: the play buttons,
-  the Recording tab and its metronome, the Info tab's transposition, the tab chips. `UITests/TargetTests.swift` measures them on the
+  the rec button, the take panel and its metronome, the Info tab's transposition, the tab chips. `UITests/TargetTests.swift` measures them on the
   simulator and `PlayTests.swift` taps the real play button.
 
 ## Moments and markers

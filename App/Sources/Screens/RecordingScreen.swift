@@ -1,4 +1,4 @@
-// The Recording tab: the running take with its live waveform, or a way to start one, and the metronome.
+// The take panel, a sheet from the rec button: the running take with its live waveform, or a way to start one, and the metronome.
 // What a reader gets wrong: a call pauses the take, it never ends it; Resume continues the same take.
 import SwiftUI
 
@@ -11,6 +11,8 @@ struct RecordingScreen: View {
                 if model.recording { running } else { idle }
             }
             .navigationTitle("Recording")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { model.recorderOpen = false } } }
         }
     }
 

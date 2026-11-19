@@ -30,6 +30,7 @@ struct SongsScreen: View {
             .onChange(of: model.library.songs.count) { if DebugLaunch.openFirst, path.isEmpty, let s = model.library.songs.first { path = [s] } }
             .navigationTitle("Songs")
             .navigationDestination(for: Song.self) { SongScreen(song: $0) }
+            .recButton()
             .toolbar {
                 Menu {
                     Button("Import a folder", systemImage: "folder") { pickFolder = true; picking = true }

@@ -1,4 +1,4 @@
-// What the Recording tab and the Takes screens need from the audio package and the store.
+// What the rec button, the take panel and the Takes screens need from the audio package and the store.
 import Foundation
 
 struct Take: Identifiable, Hashable {
