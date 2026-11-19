@@ -1,4 +1,4 @@
-// The song screen's pure text logic: transposed lines, the line being sung, tab grids, LRC and re-timing.
+// The song screen's pure text logic: transposed lines, the line being sung, tab parts, LRC and re-timing.
 // What a reader gets wrong: a timecode stays in the file; display lines are stripped, indexes are the file's.
 import Foundation
 import RehearsalText
@@ -41,17 +41,19 @@ enum SongText {
         return out
     }
 
-    /// One monospaced row per string of a tab system, every string on the same column grid.
-    static func gridRows(_ system: TabSystem) -> [String] {
-        let width = system.strings.map { $0.label.count }.max() ?? 0
-        return system.strings.map { string in
-            var cells = [Character](repeating: "-", count: max(system.cols, 0))
-            for bar in system.bars where bar < cells.count { cells[bar] = "|" }
-            for event in string.events {
-                for (offset, ch) in event.text.enumerated() where event.col + offset < cells.count { cells[event.col + offset] = ch }
-            }
-            return string.label.padding(toLength: width, withPad: " ", startingAt: 0) + String(cells)
-        }
+    /// The tab's nodes split at the first system: a header (title, tuning, legend) folds away, the body is drawn.
+    static func tabParts(_ nodes: [TabNode]) -> (header: [TabNode], body: [TabNode]) {
+        guard let first = nodes.firstIndex(where: { if case .system = $0 { true } else { false } }), first > 0 else { return ([], nodes) }
+        let header = Array(nodes[..<first])
+        let worded = header.contains { switch $0 { case .section, .text: true; default: false } }
+        return worded ? (header, Array(nodes[first...])) : ([], nodes)
+    }
+
+    /// A tab system as VoiceOver reads it: each string's label then its frets and techniques, in order.
+    static func tabSpoken(_ system: TabSystem) -> String {
+        system.strings.map { string in
+            ([string.label.isEmpty ? "string" : string.label] + string.events.map(\.text)).joined(separator: " ")
+        }.joined(separator: ", ")
     }
 
     /// Lyrics timed from an LRC file's text, or the reason it could not be.

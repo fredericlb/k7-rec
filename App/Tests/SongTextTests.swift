@@ -31,14 +31,16 @@ final class SongTextTests: XCTestCase {
         XCTAssertEqual(chords, ["D", "A", "Bm"])
     }
 
-    func testTabSystemIsDrawnOnOneGrid() {
-        let nodes = Tablature.parse("e|--0--2--|\nB|--1-----|\nG|--------|")
-        guard case .system(let system) = nodes.first else { return XCTFail("no system") }
-        let rows = SongText.gridRows(system)
-        XCTAssertEqual(rows.count, 3)
-        XCTAssertEqual(Set(rows.map(\.count)).count, 1)
-        XCTAssertTrue(rows[0].hasPrefix("e|"))
-        XCTAssertTrue(rows[0].contains("0") && rows[0].contains("2"))
+    func testTabHeaderFoldsOnlyWordsBeforeTheFirstSystem() {
+        let parts = SongText.tabParts(Tablature.parse("Tuning: EADGBE\n\ne|--0--2--|\nB|--1-----|\n\nOutro"))
+        XCTAssertEqual(parts.header.first, .text("Tuning: EADGBE"))
+        guard case .system = parts.body.first else { return XCTFail("the body starts at the system") }
+        XCTAssertTrue(SongText.tabParts(Tablature.parse("\ne|--0--|\nB|--1--|")).header.isEmpty)
+    }
+
+    func testTabSystemIsSpokenStringByString() {
+        guard case .system(let system) = Tablature.parse("e|--0--2h3--|\nB|--1-------|").first else { return XCTFail("no system") }
+        XCTAssertEqual(SongText.tabSpoken(system), "e 0 2 h 3, B 1")
     }
 
     func testLRCTimesTheLyricsAndAnEmptyOneFails() throws {

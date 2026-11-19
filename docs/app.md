@@ -121,6 +121,11 @@ speaker is picked up by the microphone; headphones are not).
   chords and lyrics tabs and the diagrams; the files are never rewritten.
 - **Chords and tab are monospace, scrolled sideways, never wrapped**, since alignment is the data. The
   sideways scroll is nested in the vertical one: a two-axis `ScrollView` centres short content.
+- **Tab is drawn, not printed**: a system is a `Canvas` staff on the ASCII's column grid (one monospaced
+  advance per character), string labels in the accent colour, frets bold with the string line cut around
+  them, bar lines across the strings. Each system scrolls sideways on its own, so a long riff does not push
+  the rest of the page. What comes before the first system (title, tuning, legend) folds behind a
+  "Show header" button; VoiceOver reads a system string by string, frets only, never the dashes.
 - **The popover, not a menu, holds the song menu's controls** (`.presentationCompactAdaptation(.popover)`); it is as
   wide as the screen allows, up to 400 pt. The transposition sits in the song's Info tab. The metronome sits on the
   Recording tab and lives in `AppModel`, so its click outlives any screen and a stop by the system (a call, a route
