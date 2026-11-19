@@ -83,7 +83,7 @@ struct SongScreen: View {
         .sheet(item: $editing) { kind in TextEditorSheet(song: live, kind: kind) }
         .fileImporter(
             isPresented: Binding(get: { picking != nil }, set: { if !$0 { picking = nil } }),
-            allowedContentTypes: picking == .lrc ? [UTType(filenameExtension: "lrc") ?? .plainText, .plainText] : [.pdf, .image]
+            allowedContentTypes: picking == .lrc ? [UTType(filenameExtension: "lrc") ?? .plainText, .plainText] : Self.sheetTypes
         ) { result in
             let kind = pickedKind
             guard case .success(let url) = result else { return }
@@ -206,6 +206,9 @@ struct SongScreen: View {
             if model.notice == nil { model.notice = "Timed \(r.placed) of \(r.total) lines." }
         }
     }
+
+    /// What the sheet picker takes: PDFs, images and MusicXML scores, compressed or not.
+    static let sheetTypes: [UTType] = [.pdf, .image, .xml] + SheetKind.scoreExtensions.compactMap { UTType(filenameExtension: $0) }
 }
 
 /// Which tabs a song shows and which one it opens on.

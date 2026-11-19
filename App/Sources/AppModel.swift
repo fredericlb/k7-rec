@@ -9,6 +9,7 @@ final class AppModel {
     let library: SongLibrary
     let recorder: TakeRecording
     let player: TakePlaying
+    let scorePlayer: ScorePlaying
     let moments: MomentKeeping
     let prefs: SongPrefs
     let stems: StemMaking
@@ -29,6 +30,7 @@ final class AppModel {
         library: SongLibrary? = nil,
         recorder: TakeRecording? = nil,
         player: TakePlaying? = nil,
+        scorePlayer: ScorePlaying? = nil,
         moments: MomentKeeping? = nil,
         prefs: SongPrefs? = nil,
         stems: StemMaking? = nil,
@@ -41,17 +43,19 @@ final class AppModel {
         self.library = library ?? FakeSongLibrary()
         self.recorder = recorder ?? FakeTakeRecorder()
         self.player = player ?? FakeTakePlayer()
+        self.scorePlayer = scorePlayer ?? FakeScorePlayer()
         self.moments = moments ?? FakeMomentKeeper()
         self.stems = stems ?? FakeStemMaker()
         self.lyrics = lyrics ?? FakeLyricsFetcher()
         self.server = server ?? ServerAccount()
         self.player.onIdle = { [weak self] in self?.listeningTo = nil; self?.restSession() }
         metronome.onStop = { [weak self] in self?.restSession() }
+        self.scorePlayer.onIdle = { [weak self] in self?.restSession() }
     }
 
     /// Gives the audio session back once nothing records, plays or clicks, so other apps' music resumes.
     func restSession() {
-        if !recording, !player.isPlaying, !metronome.running { deactivate() }
+        if !recording, !player.isPlaying, !scorePlayer.isPlaying, !metronome.running { deactivate() }
     }
 
     /// The real seams over the app's files; a store that cannot open falls back to memory, with a notice.
@@ -70,7 +74,7 @@ final class AppModel {
         let model = AppModel(
             library: StoreSongLibrary(store: store, songsFolder: paths.songs),
             recorder: StoreTakeRecorder(store: store, takesFolder: paths.takes, headsetInput: { prefs.headsetInput }),
-            player: PackagePlayer(), moments: StoreMoments(store: store),
+            player: PackagePlayer(), scorePlayer: MIDIScorePlayer(), moments: StoreMoments(store: store),
             prefs: prefs, stems: LiveStemMaker(songs: paths.songs, models: paths.models), lyrics: LRCLibClient(), server: ServerAccount(files: ServerFiles(), secrets: KeychainStore()))
         model.notice = failure
         model.looksUpLyrics = !DebugLaunch.noLyricsLookup

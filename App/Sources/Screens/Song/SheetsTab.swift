@@ -38,15 +38,15 @@ struct SheetsTab: View {
     }
 }
 
-/// A PDF through PDFKit, an image in a zooming scroll view; the kind is told by the file's extension.
+/// A PDF through PDFKit, a MusicXML score through Verovio, an image in a zooming scroll view; the kind is told by the file's extension.
 struct SheetViewer: View {
     let url: URL
 
     var body: some View {
-        if url.pathExtension.lowercased() == "pdf" {
-            PDFSheet(url: url)
-        } else {
-            ZoomableImage(url: url)
+        switch SheetKind(url: url) {
+        case .pdf: PDFSheet(url: url)
+        case .score: ScoreSheet(url: url)
+        case .image: ZoomableImage(url: url)
         }
     }
 }

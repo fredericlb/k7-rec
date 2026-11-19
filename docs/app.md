@@ -130,7 +130,7 @@ speaker is picked up by the microphone; headphones are not).
   are re-timed onto the new lyrics with `LRC.mergeTimedSheet`; untimed chords are left alone.
 - **Sheets** are copied into `sheets/` under a unique name and ordered by `position`, which is the
   sidecar's order for imported ones; PDFs go through PDFKit, images through a zooming scroll view over a bounded
-  decode (4096 px on the long side), made off the main actor.
+  decode (4096 px on the long side), made off the main actor, and MusicXML scores through Verovio (`docs/score.md`).
 - **Tags are edited on the row only.** The copy's `song.yaml` gets only the uuid; a re-import takes the
   sidecar's tags when it has some and keeps the row's own otherwise.
 - **LRC import** merges a picked `.lrc` into the lyrics with `LRC.merge`, writing `{{MM:SS.cc}}` codes as the web does.
