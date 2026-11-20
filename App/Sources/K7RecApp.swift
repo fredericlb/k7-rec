@@ -2,7 +2,7 @@
 import SwiftUI
 
 @main
-struct RehearsalApp: App {
+struct K7RecApp: App {
     @State private var model = AppModel.live()
     @Environment(\.scenePhase) private var phase
 
@@ -16,7 +16,7 @@ struct RehearsalApp: App {
         .commands {
             CommandMenu("Recording") {
                 Button(model.recording ? "Show Take" : "Record") {
-                    if model.recording { model.recorderOpen = true } else { Task { await model.startTake(song: model.shownSong) } }
+                    if model.recording { model.recorderOpen = true } else { Task { await model.startTake(song: model.songForTake) } }
                 }
                 .keyboardShortcut("r", modifiers: .command)
                 Button("Metronome") { model.recorderOpen = true }

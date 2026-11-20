@@ -2,17 +2,17 @@
 import RehearsalAudio
 import RehearsalStore
 import XCTest
-@testable import Rehearsal
+@testable import K7Rec
 
 @MainActor
 final class MomentsTests: XCTestCase {
     /// 40 s at 200 ms: loud 0-8 s, 14-24 s and 31-38 s (end excluded), quiet between.
-    private func take(_ file: String = "a.m4a") -> Rehearsal.Take {
+    private func take(_ file: String = "a.m4a") -> K7Rec.Take {
         let samples = (0..<200).map { i -> Double in
             let t = Double(i) * 0.2
             return [0.0..<8, 14..<24, 31..<38].contains { $0.contains(t) } ? 0.8 : 0.01
         }
-        return Rehearsal.Take(id: "t1", title: "Take", date: .now, duration: 40, envelope: samples, audioURL: URL(fileURLWithPath: "/x/\(file)"))
+        return K7Rec.Take(id: "t1", title: "Take", date: .now, duration: 40, envelope: samples, audioURL: URL(fileURLWithPath: "/x/\(file)"))
     }
 
     func testTheSlidersRunTheDetectorAgainOnEveryMove() {

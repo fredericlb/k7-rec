@@ -88,20 +88,22 @@ final class StoreTakeRecorder: TakeRecording {
         }
     }
 
-    func stop() async {
-        guard let r = recorder, let info = pending else { return }
+    @discardableResult func stop() async -> String? {
+        guard let r = recorder, let info = pending else { return nil }
+        var saved: String?
         failure = nil
         (recorder, pending, level, paused, pauseCause) = (nil, nil, 0, false, nil)
         (live, liveSamples, liveMoments, highlights) = (LiveTake(), [], 0, [])
         watcher?.cancel()
         do {
-            try await save(try await r.stop(), info)
+            saved = try await save(try await r.stop(), info)
         } catch RecorderError.nothingRecorded {
-            if let last = parts.last { await saveQuietly(last, info) }
+            if let last = parts.last { saved = await saveQuietly(last, info) }
         } catch {
             failure = error.localizedDescription
         }
         parts = []
+        return saved
     }
 
     func listen(to highlight: Highlight) -> Listening? {
@@ -179,18 +181,20 @@ final class StoreTakeRecorder: TakeRecording {
         }
     }
 
-    private func saveQuietly(_ result: TakeResult, _ info: (songID: String, title: String, date: Date)) async {
-        do { try await save(result, info) } catch { failure = error.localizedDescription }
+    @discardableResult private func saveQuietly(_ result: TakeResult, _ info: (songID: String, title: String, date: Date)) async -> String? {
+        do { return try await save(result, info) } catch { failure = error.localizedDescription; return nil }
     }
 
-    /// Files the row, then frees the raw inputs and the m4a parts the final file already holds.
-    private func save(_ result: TakeResult, _ info: (songID: String, title: String, date: Date)) async throws {
-        try await store.put(row(of: result, songID: info.songID, title: info.title, date: info.date))
+    /// Files the row, then frees the raw inputs and the m4a parts the final file already holds; returns the take's id.
+    @discardableResult private func save(_ result: TakeResult, _ info: (songID: String, title: String, date: Date)) async throws -> String {
+        let take = row(of: result, songID: info.songID, title: info.title, date: info.date)
+        try await store.put(take)
         result.confirmSaved()
         for part in parts where part.url != result.url {
             part.confirmSaved()
             try? FileManager.default.removeItem(at: part.url)
         }
+        return take.id
     }
 
     func row(of result: TakeResult, songID: String, title: String, date: Date) -> RehearsalStore.Take {

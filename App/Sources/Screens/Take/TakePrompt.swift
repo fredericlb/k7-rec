@@ -19,8 +19,8 @@ enum TakePrompt: Identifiable {
 
     var heading: String {
         switch self {
-        case .saveMoment: "Save moment"
-        case .renameMoment: "Rename moment"
+        case .saveMoment: "Save highlight"
+        case .renameMoment: "Rename highlight"
         case .newPin: "Add marker"
         case .renamePin: "Rename marker"
         }

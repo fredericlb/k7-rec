@@ -1,20 +1,22 @@
 # The app shell
 
-The Rehearsal app is a SwiftUI shell over three local packages (text, audio, store). It owns no logic
+The K7 REC app is a SwiftUI shell over three local packages (text, audio, store). It owns no logic
 of its own: screens read and write through small protocols, and the packages are wired in behind them.
 
 ## Project definition
 
 - **XcodeGen, `App/project.yml` checked in, the `.xcodeproj` generated and git-ignored.** A hand-kept
   `.pbxproj` merges badly and four branches touch this tree at once. XcodeGen (MIT, a dev tool, not
-  linked into the app) is any `xcodegen` on the PATH; run `xcodegen generate` in `App/`.
+  linked into the app) is any `xcodegen` on the PATH; run `xcodegen generate` in `App/`; it writes `K7Rec.xcodeproj`.
 - **The Info.plist is generated from `project.yml`** (`info:`), so one file holds every key: microphone and
   local network usage strings, `UIFileSharingEnabled` (takes and songs show in the Files app), in-place
   document opening, and the `audio` background mode so a take survives a locked screen.
-- **iOS 17, SwiftUI lifecycle, iPhone and iPad, all orientations on iPad.** iOS 17 gives `@Observable`
-  and `ContentUnavailableView`; nothing needs UIKit app delegates.
-- **Bundle id `se.frediver.rehearsal`, display name "Rehearsal".** The version is `MARKETING_VERSION` in
-  `project.yml`, read by Settings from the bundle.
+- **iOS 26 and later only, SwiftUI lifecycle, iPhone and iPad, all orientations on iPad.** The controls are
+  Liquid Glass (`glassEffect`, `.glass` buttons), which iOS 26 draws itself; an earlier system is not supported,
+  so nothing imitates the glass. The packages keep their own, lower targets.
+- **The app is K7 REC, bundle id `rocks.k7.rec`, iCloud container `iCloud.rocks.k7.rec`.** The Xcode project,
+  the targets and the module are `K7Rec` (`K7RecTests`, `K7RecUITests`); the packages keep their `Rehearsal`
+  names, which no user sees. The version is `MARKETING_VERSION` in `project.yml`, read by Settings from the bundle.
 - **Swift 6 language mode**, like the three packages, so every `@MainActor` and `Sendable` claim is checked.
   What the system calls back off the main actor (the media picker's delegate, the media permission) is
   handled where no actor owns the closure.
@@ -69,39 +71,79 @@ interruption by a call, the system file picker's security-scoped URLs from iClou
 metronome click through a speaker or Bluetooth, and a take recorded while a song plays (the
 speaker is picked up by the microphone; headphones are not).
 
+## Look
+
+- **The K7 design system, Rec theme** (the "K7" design system artifact): warm black ground, cream text, orange
+  accent, light-blue highlights. `Screens/K7Tokens.swift` is its "SwiftUI tokens" page copied unchanged and
+  replaced whole when the tokens change; screens read colours from `k7`, never a literal, so a token change
+  is one file. `Screens/Theme.swift` holds what the system builds from them: the backdrop (two glows, two
+  wave lines, the only glow allowed), cards, wells, the header, the empty state.
+- **One backdrop, always moving** (`Screens/Backdrop.swift`), behind the tab stacks, which are see-through, so a
+  single view animates. Silent, its two wave lines drift apart (one pass in 60 s and 90 s); while a song or a
+  take plays, or a take records, they follow the level heard (`AppModel.soundLevel`: the player's output, metered
+  after its gain, or the microphone's input), from 1× at silence to 2× at full level on the decibel scale, and
+  speed up to 9 s and 13 s. The motion is stepped frame by frame from the last state, so a change of speed
+  never jumps, and the height rises in a tenth of a second and settles in half a second. The lines are the
+  design system's own, kept as a mean and two harmonics each. Reduced motion stills them.
+- **Dark only.** The tokens define no light theme, so the root forces the dark scheme.
+- **Platform sizes follow the system's rules** (`Metrics`): side margin 16 on iPhone, 40 on iPad, 64 on the
+  Mac; tab 86 by 64 on iPhone, 112 by 68 wider; wells about 30% shorter on iPhone; the view switch shares the
+  full width on iPhone and has 104 pt segments wider. What does not fit on iPhone (Info, the instrumental
+  switch) moves into the song's "…". Settings is one column on iPhone, two on iPad and the Mac.
+- **Glass floats, cards sit.** Glass is for what floats over the ground (the tab bar, header actions, the
+  view switch); inside a card or the take panel, controls are quiet `fillControl` pills so glass never stacks.
+  Red means recording or stopping, nothing else.
+- **Saved moments are called highlights** on screen, as in the design; "Detect moments" keeps its name.
+
 ## Screens
 
-- **Songs, Takes, Settings** as a plain `TabView`: a bottom bar on iPhone, a top bar on iPad (iOS 26). A sidebar needs `.sidebarAdaptable`, iOS 18 and later, so it waits for a deployment target above 17.
-- **A song is one column of tabs** (`packages/ui-library/docs/songPlayer.md`): it opens on chords, else
-  lyrics, else sheets; Info is last, an icon pinned right outside the scrolling row; the header holds play,
-  the title and a menu, all on the leading side. Back is the navigation bar's.
-- **Recording is one button in the app's header, top right**, laid over the tab view, so it is the same
-  button on every screen: in the tab row on iPad, above the title on iPhone, in the title bar on the Mac
-  (`docs/mac.md`). A tap starts a take
-  where the person is, with no change of screen; while a song's page is open the take belongs to that song
-  (`AppModel.shownSong`). That corner is the button's alone: the screens put their own bar buttons (import,
-  the song's and the take's ⋮) on the leading side, since a bar item under the overlay could not be tapped. While a take runs, the button is
-  an LED lit by the input level on a decibel scale (black below -40 dB, green at -20, orange at -6, red
-  at full level; `Logic/LevelLED.swift`), since the linear level of a quiet room or a voice stays near zero, ringed red so a silent
-  take still reads as recording, and a tap opens the take panel as a sheet (clock, waveform, moments, pause
-  and stop). The metronome sits in the same panel, reached while idle from the button's context menu. The
-  screens stay usable under a running take; nothing sits above the tab bar.
-- **The panel draws the running take**: the last 30 seconds of its envelope, re-levelled to the loudest bucket so far
-  (`Logic/LiveTake.swift`), with the metronome right under it and the take's controls below.
-- **The moments found so far are listed under the controls**, each with its own slice of the waveform and a play
-  button. The detector runs at its default floor and silence; a moment still open counts once it is 4 seconds
-  long, so a row can change or vanish while the take grows. Playing one rests the take first, so the speaker is
-  never recorded, and reads the take's raw file (readable while it is written, flushed first) at the take's
-  playback gain; Resume or Stop silences it. A moment of an earlier part of a continued take plays from that part.
-  The take's page gives the final list.
+- **Songs, Takes, Settings under one floating glass bar**, centred at the bottom on iPhone, iPad and the Mac
+  alike, with the rec button beside it (the K7 TabBar). It is the app's own bar, not a `TabView`: the system
+  bar sits at the top on iPad and in the title bar on the Mac, where the design has none. The three tabs stay
+  alive behind the one in front, so a switch keeps their pages; picking the tab in front again goes back to
+  its list. Content scrolls under the bar.
+- **A song is one column of views** (`packages/ui-library/docs/songPlayer.md`): it opens on chords, else
+  lyrics, else sheets, picked from the glass view switch under the waveform; Info and the instrumental switch
+  sit at the switch's right on iPad and the Mac, in the song's "…" on iPhone. Play and "…" share the bar's
+  right capsule. Back is the navigation bar's.
+- **Recording is the round glass button beside the tab bar**, the same on every screen. A tap starts a take
+  where the person is, with no change of screen; while the Songs tab shows a song the take belongs to it
+  (`AppModel.songForTake`). While a take runs, the button's glass is tinted by the input level on the
+  decibel scale (`Logic/LevelMeter.swift`): clear at silence, fading in to green by -20 dB, orange at -6 dB,
+  red at full level, so a glance tells whether the take is too quiet or clipping. The level is followed like a
+  meter's needle (`LevelMeter.follow`): every 50 ms, only while a take runs, it rises half the way to the new
+  level and falls 15%, and each step is animated, so the colour glides instead of flickering; a rest or a
+  stop fades it out. The dot pulses whenever the panel is closed, so recording is never
+  invisible, and a tap opens the take panel as a sheet. The metronome is a menu in the panel's header,
+  reached while idle from the button's context menu. The screens stay usable under a running take.
+- **The panel draws the running take**: clock, input level on a decibel scale (`Logic/LevelMeter.swift`), and
+  the last 30 seconds of its envelope, re-levelled to the loudest bucket so far (`Logic/LiveTake.swift`).
+  The well scrolls at display rate, not in 200 ms steps (`Screens/LiveWaveform.swift`): its bars are bins
+  pinned to take time (a bin always holds the same buckets), so a bar keeps its height as it slides instead of
+  changing with every regrouping of the window; and between two buckets a clock runs the scroll on from the
+  newest one's arrival, for at most one bucket, so the newest bucket slides in from the right edge.
+- **The highlights found so far are spans on that waveform**, with no list and no count. The detector runs
+  at its default floor and silence; a span still open counts once it is 4 seconds long, so a span can change or
+  vanish while the take grows. A tap on a span rests the take first, so the speaker is never recorded, zooms
+  the well until the span fills about 80% of it and plays it in a loop from the take's raw file (readable
+  while it is written, flushed first) at the take's playback gain; the filled Resume button zooms out and
+  goes on recording. Stop ends the take, closes the panel and opens the saved take's page in the Takes tab
+  (`AppModel.stoppedTake`), which gives the final list.
 - **Lyrics come from LRCLIB at import, and again from the song menu.** A song that arrives without lyrics
   (a file, a folder, a server file) is looked up on lrclib.net by title, artist and, for a file,
   its duration; timed lyrics are saved in the app's own timecodes, else the words alone. Only those three
   values leave the device, and only here. A failure never blocks the import: one notice says which songs
   got nothing, and the song menu's "Download lyrics from LRCLIB" repeats the lookup. A song that already
   has lyrics only gets timing from it: its words are never replaced.
-- **The song's header is the navigation bar**: back, then play and the title, the menu at the right. A bar item is 36 pt
-  tall whatever its label asks for, so those two are the one exception to the 44 pt rule.
+- **The header keeps the design's gap under the status bar**: 10 pt on iPhone, 22 on iPad, 28 under the Mac's
+  title bar (`Metrics.top`). The system places navigation bars from the window's safe area, which SwiftUI
+  padding does not move, so the gap is the root controller's extra top inset.
+- **Every screen's header is the navigation bar, dense**: back when pushed, the K7 Rec mark at 26 pt, the
+  title and its subtitle (a count, the artist, the date) as one leading item, the screen's actions at the
+  right in one glass capsule. The system title is removed so it is not drawn twice. A bar item is 36 pt tall
+  whatever its label asks for, and the bar adds about 14 pt to its label's width, so play and the menu ask
+  for 30 pt to be 44 pt wide; on iPhone the title is capped at 170 pt so the actions are never pushed into the
+  bar's overflow.
 - **A file server can feed the import**: Settings connects one FTPS or SFTP server (`docs/server.md`), and Songs' + menu then
   offers it. The import sheet browses folders and ticks audio files; they are downloaded and imported as picked files.
   "Missing song" in the same menu asks for an artist and a title and adds them to `MISSING-SONGS.md` on the server.

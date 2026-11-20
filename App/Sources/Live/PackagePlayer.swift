@@ -12,6 +12,7 @@ final class PackagePlayer: TakePlaying {
     @ObservationIgnored var onIdle: (() -> Void)?
 
     var position: TimeInterval { player?.positionSec ?? 0 }
+    var level: Double { min(1, Double(player?.outputRMS ?? 0) * 3) }
 
     func load(id: String, url: URL) {
         guard loadedID != id else { return }

@@ -4,7 +4,7 @@ Songs and takes follow the user's iCloud account; the database does not.
 
 ## Choices
 
-- **Files live in the app's iCloud container** (`iCloud.se.frediver.rehearsal`, Documents): `Songs/`, `Takes/`
+- **Files live in the app's iCloud container** (`iCloud.rocks.k7.rec`, Documents): `Songs/`, `Takes/`
   (stems sit in their song's folder) and `Records/`. The Files app shows them under iCloud Drive. Without a
   container (signed out, simulator, tests) the same folders sit in the local Documents and nothing else changes.
 - **The model and the database stay on the device.** The 400 MB separation model is installed per device, and

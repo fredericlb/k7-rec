@@ -21,12 +21,16 @@ struct FollowedScroll<Content: View>: View {
     var axes: Axis.Set = .vertical
     var active: Int?
     @ViewBuilder var content: Content
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
+        let margin = Metrics(sizeClass).margin
         ScrollViewReader { proxy in
             ScrollView(.vertical) {
                 // A two-axis ScrollView centres short content, so the sideways scroll is nested.
-                if axes.contains(.horizontal) { ScrollView(.horizontal) { content.padding() } } else { content.padding() }
+                if axes.contains(.horizontal) {
+                    ScrollView(.horizontal) { content.padding(.horizontal, margin).padding(.vertical, 6) }
+                } else { content.padding(.horizontal, margin).padding(.vertical, 6) }
             }
                 .onChange(of: active) { _, line in
                     if let line { withAnimation { proxy.scrollTo(max(line - 3, 0), anchor: .topLeading) } }

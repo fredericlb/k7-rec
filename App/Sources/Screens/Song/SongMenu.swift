@@ -1,4 +1,5 @@
-// The ⋮ popover: the date and the buttons that add texts and sheets, fetch lyrics and split stems.
+// The ⋮ popover: the date, on iPhone Info and the instrumental switch, then the buttons that add texts and sheets,
+// fetch lyrics and split stems.
 // What a reader gets wrong: it is a popover on the iPhone, so a control is used in place; the Mac lists the same actions in a Menu.
 import SwiftUI
 
@@ -9,13 +10,24 @@ struct SongMenu: View {
     let importLRC: () -> Void
     let downloadLyrics: () -> Void
     let stems: () -> Void
+    /// What does not fit beside the iPhone's view switch: Info, and the instrumental switch once there are stems.
+    var info: (() -> Void)?
+    var instrumental: Bool?
+    var switchVersion: () -> Void = {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Added \(song.added.formatted(date: .abbreviated, time: .omitted))").font(.caption).foregroundStyle(.secondary)
+            Text("Added \(song.added.formatted(date: .abbreviated, time: .omitted))").font(.caption).foregroundStyle(k7.textSecondary)
             Divider()
+            if let info { Button("Info", systemImage: "info.circle", action: info) }
+            if let instrumental {
+                Button(instrumental ? "Play the full song" : "Play the instrumental", systemImage: instrumental ? "mic" : "mic.slash", action: switchVersion)
+                    .accessibilityIdentifier("versionSwitch")
+            }
+            if info != nil || instrumental != nil { Divider() }
             SongActions(song: song, edit: edit, addSheet: addSheet, importLRC: importLRC, downloadLyrics: downloadLyrics, stems: stems)
         }
+        .tint(k7.text)
         .padding()
         .frame(minWidth: 280, idealWidth: 360, maxWidth: 400)
         .fixedSize(horizontal: false, vertical: true)

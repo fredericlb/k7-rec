@@ -1,7 +1,7 @@
 // The player seam follows the package's player when something else pauses it, and the session rests when idle.
 import RehearsalAudio
 import XCTest
-@testable import Rehearsal
+@testable import K7Rec
 
 @MainActor
 final class PlayerWiringTests: XCTestCase {

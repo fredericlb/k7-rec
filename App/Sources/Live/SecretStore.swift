@@ -8,7 +8,7 @@ protocol SecretStore: Sendable {
 }
 
 struct KeychainStore: SecretStore {
-    private let service = "se.frediver.rehearsal"
+    private let service = "rocks.k7.rec"
 
     private func query(_ key: String) -> [String: Any] {
         [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: key]

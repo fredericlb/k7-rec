@@ -25,7 +25,6 @@ struct WaveformView: View {
                 if abs(drag.translation.width) > abs(drag.translation.height) { seek(toX: drag.location.x, in: geo.size.width) }
             })
         }
-        .frame(height: 80)
         .accessibilityElement()
         .accessibilityLabel("Position")
         .accessibilityValue(Text(clock(position())))
@@ -48,7 +47,7 @@ struct WaveformBars: View, Equatable {
 
     var body: some View {
         Canvas { context, size in
-            let step: CGFloat = 3
+            let step: CGFloat = 5
             let bars = max(1, Int(size.width / step))
             guard !samples.isEmpty else { return }
             for i in 0..<bars {
@@ -56,8 +55,8 @@ struct WaveformBars: View, Equatable {
                 let hi = max(lo + 1, (i + 1) * samples.count / bars)
                 let level = samples[lo..<min(hi, samples.count)].max() ?? 0
                 let h = max(2, CGFloat(min(1, level)) * size.height)
-                let bar = CGRect(x: CGFloat(i) * step, y: (size.height - h) / 2, width: 2, height: h)
-                context.fill(Path(roundedRect: bar, cornerRadius: 1), with: .color(.accentColor.opacity(0.6)))
+                let bar = CGRect(x: CGFloat(i) * step + 1, y: (size.height - h) / 2, width: 3, height: h)
+                context.fill(Path(roundedRect: bar, cornerRadius: 1.5), with: .color(k7.accentLine))
             }
         }
     }
@@ -73,7 +72,7 @@ private struct PlayheadLayer: View {
     var body: some View {
         TimelineView(.animation(paused: !playing)) { _ in
             let fraction = duration > 0 ? min(1, max(0, position() / duration)) : 0
-            Rectangle().fill(.red).frame(width: 2).offset(x: fraction * width)
+            Rectangle().fill(.white).frame(width: 2).offset(x: fraction * width)
         }
         .allowsHitTesting(false)
     }

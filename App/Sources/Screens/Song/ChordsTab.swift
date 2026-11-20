@@ -9,6 +9,9 @@ struct ChordsTab: View {
     let onTap: (Int) -> Void
 
     @State private var memo = ParsedMemo()
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    /// The chord sheet's mono size: 13 on iPhone, 17 on iPad and the Mac, with the line heights the design system sets.
+    private var size: CGFloat { Metrics(sizeClass).wide ? 17 : 13 }
 
     var body: some View {
         let (lines, timed) = memo.get(text, semitones) { (SongText.displayLines($0, semitones: $1), Set(LyricsTiming.byLine($0).map(\.line))) }
@@ -18,15 +21,17 @@ struct ChordsTab: View {
                     row(line).fixedSize(horizontal: true, vertical: false).followed(index: i, active: active, timed: timed, onTap: onTap)
                 }
             }
-            .font(.system(.body, design: .monospaced))
+            .font(.system(size: size, design: .monospaced))
+            .lineSpacing(size * 0.6)
+            .foregroundStyle(k7.text)
         }
     }
 
     @ViewBuilder private func row(_ line: ParsedLine) -> some View {
         switch line {
         case .empty: Text(" ")
-        case .section(let label): Text(label).bold().foregroundStyle(.secondary)
-        case .chords(let t): Text(t).bold().foregroundStyle(Color.accentColor)
+        case .section(let label): Text(label).bold().foregroundStyle(k7.textTertiary)
+        case .chords(let t): Text(t).bold().foregroundStyle(k7.accentIcon)
         case .lyrics(let segments): Text(Self.attributed(segments))
         }
     }
@@ -36,8 +41,8 @@ struct ChordsTab: View {
         for s in segments {
             if let chord = s.chord {
                 var c = AttributedString("[\(chord)]")
-                c.foregroundColor = .accentColor
-                c.font = .system(.body, design: .monospaced).bold()
+                c.foregroundColor = k7.accentIcon
+                c.inlinePresentationIntent = .stronglyEmphasized
                 out += c
             }
             out += AttributedString(s.text)

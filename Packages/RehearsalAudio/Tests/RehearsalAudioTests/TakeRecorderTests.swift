@@ -116,6 +116,24 @@ final class TakeRecorderTests: XCTestCase {
     XCTAssertTrue(lost)
   }
 
+  func testAMicrophoneAtZeroHertzRefusesToStartAndSaysWhy() throws {
+    let input = FakeInput()
+    input.sampleRate = 0
+    let rec = TakeRecorder(input: input, directory: dir)
+    XCTAssertThrowsError(try rec.start()) { error in
+      guard case RecorderError.noInputFormat = error else { return XCTFail("\(error)") }
+      XCTAssertTrue(error.localizedDescription.contains("0 Hz"))
+    }
+    XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: dir.path), [])
+    input.sampleRate = 8000
+    XCTAssertNoThrow(try rec.start())
+  }
+
+  func testAStuckDeviceAudioSaysToRestart() {
+    XCTAssertEqual(RecorderError.ioRefusedCode, 1_852_797_029)
+    XCTAssertTrue(RecorderError.audioStuck.localizedDescription.contains("Restart"))
+  }
+
   func testStoppingWithNothingRecordedThrowsAndLeavesNoFile() async throws {
     let input = FakeInput()
     let rec = TakeRecorder(input: input, directory: dir)

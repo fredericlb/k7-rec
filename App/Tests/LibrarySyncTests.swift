@@ -1,6 +1,6 @@
 import RehearsalStore
 import XCTest
-@testable import Rehearsal
+@testable import K7Rec
 
 /// Two "devices" are two stores and two defaults suites sharing one records folder.
 final class LibrarySyncTests: XCTestCase {

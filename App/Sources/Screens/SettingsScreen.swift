@@ -1,65 +1,212 @@
-// Settings: the lyrics lead, the headset microphone, the file server, iCloud and the About line.
+// Settings as the design system's cards: the lyrics lead, the headset microphone, the file server, iCloud, About.
+// One column on iPhone, two on iPad and the Mac (the file server alone on the right).
 import SwiftUI
 
 struct SettingsScreen: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    private var metrics: Metrics { Metrics(sizeClass) }
 
     var body: some View {
-        @Bindable var prefs = model.prefs
         NavigationStack {
-            Form {
-                Section {
-                    Stepper(value: $prefs.lyricsLead, in: 0...5, step: 0.5) { LabeledContent("Lyrics lead", value: String(format: "%.1f s", prefs.lyricsLead)) }
-                } header: { Text("Playing") } footer: { Text("A tap on a timed lyric line starts the song this much before it.") }
-                Section {
-                    Toggle("Use the headset microphone", isOn: $prefs.headsetInput)
-                } header: { Text("Recording") } footer: { Text("Off: takes use the phone's microphone and earphones keep full-quality sound. On: a Bluetooth headset's own microphone, in narrowband sound.") }
-                serverSection
-                if let sync = model.sync { syncSection(sync) }
-                Section("About") { LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "") }
-            }
-            .navigationTitle("Settings")
-        }
-    }
-
-    @ViewBuilder private func syncSection(_ sync: SyncDriver) -> some View {
-        Section {
-            LabeledContent("Files", value: sync.inCloud ? "iCloud Drive" : "This device only")
-            if let report = sync.report {
-                LabeledContent("Records", value: report.pending > 0 ? "\(report.records) (\(report.pending) still downloading)" : "\(report.records)")
-            }
-            if let last = sync.lastRun { LabeledContent("Last sync", value: last.formatted(date: .omitted, time: .standard)) }
-            Button { sync.schedule(after: 0) } label: { if sync.running { ProgressView() } else { Text("Sync now") } }.disabled(sync.running)
-        } header: { Text("iCloud") } footer: {
-            Text(sync.inCloud ? "Songs and takes follow your iCloud account. A record written on another device can take a few minutes to arrive." : "iCloud is not available to the app: sign in to iCloud and turn on iCloud Drive, then relaunch.")
-        }
-    }
-
-    @ViewBuilder private var serverSection: some View {
-        @Bindable var server = model.server
-        Section {
-            if server.connected {
-                LabeledContent("Protocol", value: server.kind.label)
-                LabeledContent("Server", value: server.host)
-                LabeledContent("Folder", value: server.folder)
-                if let key = server.hostKey { LabeledContent("Host key", value: key).font(.footnote) }
-                Button("Disconnect", role: .destructive) { server.disconnect() }
-            } else {
-                Picker("Protocol", selection: $server.kind) { ForEach(RemoteProtocol.allCases) { Text($0.label).tag($0) } }
-                TextField("Address", text: $server.host).textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
-                TextField("Port", text: $server.port).keyboardType(.numberPad)
-                TextField("User", text: $server.user).textInputAutocapitalization(.never).autocorrectionDisabled()
-                SecureField("Password", text: $server.password)
-                TextField("Folder", text: $server.folder).textInputAutocapitalization(.never).autocorrectionDisabled()
-                if server.kind != .sftp { Toggle("Accept an untrusted certificate", isOn: $server.trustAnyCertificate) }
-                Button { Task { await server.connect() } } label: {
-                    if server.busy { ProgressView() } else { Text("Connect") }
+            ScrollView {
+                if metrics.wide {
+                    HStack(alignment: .top, spacing: K7Space.s24) {
+                        VStack(spacing: K7Space.s24) { playing; recording; icloud; about }
+                        VStack(spacing: K7Space.s24) { server }
+                    }
+                    .padding(.horizontal, metrics.margin).padding(.top, 8)
+                } else {
+                    VStack(spacing: K7Space.s24) { playing; recording; server; icloud; about }
+                        .padding(.horizontal, metrics.margin).padding(.top, 8)
                 }
-                .disabled(server.busy || server.host.isEmpty)
-                if let failure = server.failure { Text(failure).font(.footnote).foregroundStyle(.red) }
             }
-        } header: { Text("File server") } footer: {
-            Text("With a server connected, Songs can import its audio files. The connection is always encrypted: FTPS with TLS, or SFTP over SSH. An SFTP server's key is remembered at the first login and a different one is refused. Turn on the untrusted certificate option for a server with a self-signed one.")
+            .scrollDismissesKeyboard(.interactively)
+            .screenBackground()
+            .k7Header("Settings", subtitle: "K7 REC \(version)")
         }
     }
+
+    private var version: String { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "" }
+
+    private var playing: some View {
+        let lead = model.prefs.lyricsLead
+        return SettingsCard("Playing", note: "A tap on a timed lyric line starts the song this much before it.") {
+            SettingRow("Lyrics lead") {
+                StepperControl(
+                    label: String(format: "%.1f s", lead), minusLabel: "Decrease lyrics lead", plusLabel: "Increase lyrics lead", valueInside: false,
+                    minus: { model.prefs.lyricsLead = max(0, lead - 0.5) }, plus: { model.prefs.lyricsLead = min(5, lead + 0.5) })
+            }
+        }
+    }
+
+    private var recording: some View {
+        @Bindable var prefs = model.prefs
+        return SettingsCard("Recording", note: "Off: takes use the phone's microphone and earphones keep full-quality sound. On: a Bluetooth headset's own microphone, in narrowband sound.") {
+            SettingRow("Use the headset microphone") { Toggle("Use the headset microphone", isOn: $prefs.headsetInput).labelsHidden() }
+        }
+    }
+
+    @ViewBuilder private var icloud: some View {
+        if let sync = model.sync {
+            SettingsCard("iCloud", note: sync.inCloud
+                ? "Songs and takes follow your iCloud account. A record written on another device can take a few minutes to arrive."
+                : "iCloud is not available to the app: sign in to iCloud and turn on iCloud Drive, then relaunch.") {
+                SettingRow("Files") { Value(sync.inCloud ? "iCloud Drive" : "This device only") }
+                if let report = sync.report {
+                    Separator()
+                    SettingRow("Records") { Value(report.pending > 0 ? "\(report.records) (\(report.pending) still downloading)" : "\(report.records)") }
+                }
+                if let last = sync.lastRun {
+                    Separator()
+                    SettingRow("Last sync") { Value(last.formatted(date: .omitted, time: .standard)) }
+                }
+                Separator()
+                ActionRow(title: "Sync now", busy: sync.running, enabled: !sync.running) { sync.schedule(after: 0) }
+            }
+        }
+    }
+
+    private var about: some View {
+        SettingsCard("About") { SettingRow("Version") { Value(version) } }
+    }
+
+    private var server: some View {
+        @Bindable var server = model.server
+        return SettingsCard("File server", note: "With a server connected, Songs can import its audio files. The connection is always encrypted: FTPS with TLS, or SFTP over SSH. An SFTP server's key is remembered at the first login and a different one is refused. Turn on the untrusted certificate option for a server with a self-signed one.") {
+            if server.connected {
+                SettingRow("Protocol") { Value(server.kind.label) }
+                Separator()
+                SettingRow("Server") { Value(server.host) }
+                Separator()
+                SettingRow("Folder") { Value(server.folder) }
+                if let key = server.hostKey {
+                    Separator()
+                    SettingRow("Host key") { Value(key).font(.footnote) }
+                }
+                Separator()
+                ActionRow(title: "Disconnect", busy: false, enabled: true) { server.disconnect() }
+            } else {
+                SettingRow("Protocol") {
+                    Menu {
+                        Picker("Protocol", selection: $server.kind) { ForEach(RemoteProtocol.allCases) { Text($0.label).tag($0) } }
+                    } label: {
+                        HStack(spacing: 4) { Text(server.kind.label); Image(systemName: "chevron.up.chevron.down").font(.footnote) }
+                            .foregroundStyle(k7.textSecondary).frame(minHeight: K7Size.touch)
+                    }
+                    .accessibilityLabel("Protocol, \(server.kind.label)")
+                }
+                Separator()
+                FieldRow(label: "Address", text: $server.host, placeholder: "Server address", keyboard: .URL)
+                Separator()
+                FieldRow(label: "Port", text: $server.port, placeholder: "", keyboard: .numberPad)
+                Separator()
+                FieldRow(label: "User", text: $server.user, placeholder: "User name")
+                Separator()
+                FieldRow(label: "Password", text: $server.password, placeholder: "Password", secure: true)
+                Separator()
+                FieldRow(label: "Folder", text: $server.folder, placeholder: "/")
+                if server.kind != .sftp {
+                    Separator()
+                    SettingRow("Accept an untrusted certificate") {
+                        Toggle("Accept an untrusted certificate", isOn: $server.trustAnyCertificate).labelsHidden()
+                    }
+                }
+                Separator()
+                ActionRow(title: "Connect", busy: server.busy, enabled: !server.busy && !server.host.isEmpty) { Task { await server.connect() } }
+                if let failure = server.failure {
+                    Text(failure).font(.footnote).foregroundStyle(k7.statusError)
+                        .padding(.horizontal, K7Space.s20).padding(.bottom, 12).frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+    }
+}
+
+/// A labelled card of rows with its note underneath.
+private struct SettingsCard<Rows: View>: View {
+    let title: String
+    let note: String?
+    @ViewBuilder let rows: Rows
+    init(_ title: String, note: String? = nil, @ViewBuilder rows: () -> Rows) { self.title = title; self.note = note; self.rows = rows() }
+
+    var body: some View {
+        VStack(spacing: K7Space.s8) {
+            SectionTitle(title)
+            VStack(spacing: 0) { rows }.card()
+            if let note { CardNote(note) }
+        }
+    }
+}
+
+/// A label left, its control or value right, at least a row tall.
+private struct SettingRow<Control: View>: View {
+    let label: String
+    @ViewBuilder let control: Control
+    init(_ label: String, @ViewBuilder control: () -> Control) { self.label = label; self.control = control() }
+
+    var body: some View {
+        HStack(spacing: K7Space.s12) {
+            Text(label)
+            Spacer(minLength: 0)
+            control
+        }
+        .frame(minHeight: K7Size.row)
+        .padding(.leading, K7Space.s20).padding(.trailing, K7Space.s16)
+    }
+}
+
+/// A label and a borderless right-aligned field filling the rest of the row.
+private struct FieldRow: View {
+    let label: String
+    @Binding var text: String
+    let placeholder: String
+    var keyboard: UIKeyboardType = .default
+    var secure = false
+
+    var body: some View {
+        SettingRow(label) {
+            Group {
+                if secure { SecureField(label, text: $text, prompt: Text(placeholder).foregroundStyle(k7.textPlaceholder)) } else {
+                    TextField(label, text: $text, prompt: Text(placeholder).foregroundStyle(k7.textPlaceholder))
+                        .keyboardType(keyboard).textInputAutocapitalization(.never).autocorrectionDisabled()
+                }
+            }
+            .multilineTextAlignment(.trailing)
+            .frame(minHeight: K7Size.touch)
+        }
+    }
+}
+
+/// A full-width row whose label is the action, in the soft accent; greyed while it cannot run.
+private struct ActionRow: View {
+    let title: String
+    let busy: Bool
+    let enabled: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Text(title).fontWeight(.semibold).foregroundStyle(enabled ? k7.accentSoft : k7.textPlaceholder)
+                Spacer()
+                if busy { ProgressView() }
+            }
+            .frame(minHeight: K7Size.row)
+            .padding(.leading, K7Space.s20).padding(.trailing, K7Space.s16)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+    }
+}
+
+private struct Value: View {
+    let text: String
+    init(_ text: String) { self.text = text }
+    var body: some View { Text(text).foregroundStyle(k7.textSecondary).monospacedDigit().lineLimit(1).truncationMode(.middle) }
+}
+
+private struct Separator: View {
+    var body: some View { Rectangle().fill(k7.separator).frame(height: 1).padding(.leading, K7Space.s20) }
 }

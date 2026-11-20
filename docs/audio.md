@@ -60,6 +60,13 @@ input (a route lost, the engine reconfigured) pauses the take and says so on the
 does an interruption; `pauseReason` tells the UI which. A low input rate, a Bluetooth headset's
 16 kHz, gets an AAC bit rate the encoder accepts.
 
+A take that cannot start says why, in words the person can act on. A device whose audio server is
+stuck refuses to start input and output together: `kAUStartIO` hangs five seconds, then answers
+CoreAudio's `'nope'`, in every `.playAndRecord` mode, while `.record` alone still works; a restart of
+the device clears it. `EngineInput` turns that code into `audioStuck`, which tells the person to
+restart. An input that reports 0 Hz is refused as `noInputFormat` before any file exists, since no
+raw file can be written at that rate. The app's alert shows the recorder's reason, not a generic line.
+
 ## The session is behind a protocol too
 
 `SessionHost` carries the interruption and media-services-reset notifications and the session
@@ -99,6 +106,12 @@ of an `AVAudioUnitEQ` goes to +24 dB, so two in series reach +48 dB, past the re
 `PlaybackCoordinator`: starting one pauses the other. The metronome is not part of that rule, a
 click under a take is the point.
 
+## The player meters what is heard
+
+A tap after the gain keeps the RMS of the last buffer (`TakePlayer.outputRMS`), so the level is what comes out,
+the take's gain included; it reads 0 unless the player plays. The tap's closure is made outside the main actor:
+the audio thread calls it, and a closure made in the main-actor initializer would be main-actor code and trap.
+
 ## The playhead stays out of the waveform drawing
 
 The player gives a position and `Playhead` derives it from the node's render time, a pure function
@@ -117,5 +130,5 @@ samples whatever the buffer size.
 The suite runs on the Mac with a fake input and an engine rendering offline. It cannot check: the
 microphone permission flow, `.playAndRecord` routing (speaker, Bluetooth, headset), the real
 interruption and media-services-reset notifications, a CAF left by a killed process, the rate a
-headset really reports, `EngineInput` itself, the beat callback's alignment with the click, the `dataPlayedBack` completion that ends a range at the speaker,
+headset really reports, `EngineInput` itself (its `audioStuck` mapping included), the beat callback's alignment with the click, the `dataPlayedBack` completion that ends a range at the speaker,
 and the audible click. Those need a phone.

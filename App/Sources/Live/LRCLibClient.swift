@@ -33,7 +33,7 @@ struct LRCLibClient: LyricsFetching {
         var parts = URLComponents(url: base.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
         parts.queryItems = query.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) }
         var request = URLRequest(url: parts.url!, timeoutInterval: 15)
-        request.setValue("Rehearsal (iOS app)", forHTTPHeaderField: "User-Agent")
+        request.setValue("K7 REC (iOS app)", forHTTPHeaderField: "User-Agent")
         let (data, http) = try await transport(request)
         if http.statusCode == 404 { return nil }
         guard http.statusCode == 200 else { throw URLError(.badServerResponse) }

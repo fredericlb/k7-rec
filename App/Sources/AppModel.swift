@@ -19,8 +19,19 @@ final class AppModel {
     var recording = false
     /// Whether the take panel (controls, highlights, metronome) is shown over the current screen.
     var recorderOpen = false
-    /// The song whose page is open; a take started from the header belongs to it.
+    /// The song whose page is open in the Songs tab.
     var shownSong: Song?
+    /// Whether the Songs tab is the one in front; the other tabs keep their pages alive behind it.
+    var songsInFront = true
+    /// The song a take started now belongs to: the open song's, while the Songs tab is in front.
+    var songForTake: Song? { songsInFront ? shownSong : nil }
+    /// The level of what is heard or recorded now, linear; nil when nothing plays or records (the backdrop drifts).
+    var soundLevel: Double? {
+        if recording { return recorder.paused ? 0 : recorder.level }
+        return player.isPlaying ? player.level : nil
+    }
+    /// The take just stopped, for the Takes tab to open; the tab clears it once shown.
+    var stoppedTake: String?
     private(set) var lyricsBusy = false
     /// True while the instrumental is being mixed from the stems.
     private(set) var mixing = false
@@ -95,15 +106,20 @@ final class AppModel {
         guard !recording else { return }
         let title = song?.title ?? "Take " + Date().formatted(date: .abbreviated, time: .shortened)
         recording = await recorder.start(songID: song?.id ?? "", title: title)
-        if !recording { notice = "The recording could not start. Check the microphone in Settings." }
+        if !recording { notice = "The recording could not start: " + (recorder.failure ?? "the microphone did not answer.") }
     }
 
+    /// Ends the take and, once it is saved, closes the panel and opens the take's page.
     func stopTake() async {
         stopListening()
-        await recorder.stop()
+        let saved = await recorder.stop()
         recording = false
         notice = recorder.failure ?? notice
         restSession()
+        if let saved {
+            recorderOpen = false
+            stoppedTake = saved
+        }
     }
 
     func resumeTake() async {
@@ -119,14 +135,14 @@ final class AppModel {
     /// The highlight now heard, nil when none.
     private(set) var listeningTo: Int?
 
-    /// Hears a moment of the running take: the take rests first, so the speaker is never recorded; a second tap stops it.
+    /// Hears a highlight of the running take in a loop: the take rests first, so the speaker is never recorded; a second tap stops it.
     func listen(to highlight: Highlight) {
         if listeningTo == highlight.id, player.isPlaying { player.toggle(); return }
-        guard let heard = recorder.listen(to: highlight) else { notice = "That moment cannot be played yet."; return }
+        guard let heard = recorder.listen(to: highlight) else { notice = "That highlight cannot be played yet."; return }
         player.unload()
         player.load(id: Self.liveID, url: heard.url)
         player.setGain(heard.gain)
-        player.setRange(heard.span, loops: false)
+        player.setRange(heard.span, loops: true)
         player.seek(to: heard.span.lowerBound)
         listeningTo = highlight.id
         if !player.isPlaying { player.toggle() }

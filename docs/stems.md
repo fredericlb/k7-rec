@@ -3,13 +3,16 @@
 `Packages/RehearsalStems` splits a song's own audio file into drums, bass, other and vocals, and plays
 the four back with a mix. It depends on AVFoundation, Core ML and `RehearsalAudio` (the playback floor).
 
-## The model is a file the user installs, not code
+## The model is bundled in the build, not in the repository
 
-No model ships in the repository: the weights are 407 MB and carry their own licence. The app uses the MIT
-Core ML conversion of HTDemucs `slaughters85j/htdemucs-coreml` (FP32 only: FLOAT16 destroys the
-reconstruction). `StemSeparator.mlpackage` goes in the `Models` folder of Documents (reachable in the Files
-app), or a compiled `StemSeparator.mlmodelc` in the bundle. A package is compiled once and kept beside it as
-a `.mlmodelc`. Without a model the sheet says what to install and offers no work.
+The weights are 407 MB and carry their own licence, so the repository does not hold them. `App/fetch-model.sh`
+puts the MIT Core ML conversion of HTDemucs `slaughters85j/htdemucs-coreml` (FP32 only: FLOAT16 destroys the
+reconstruction) in `App/Models` (git-ignored) as `StemSeparator.mlpackage`; the build compiles it into the app
+as `StemSeparator.mlmodelc`, on the iPhone, the iPad and the Mac alike. Xcode generates no class for it
+(`COREML_CODEGEN_LANGUAGE` is `None`): the generated `StemSeparator` would clash with the package's. A build
+without the folder has no model; a `StemSeparator.mlpackage` dropped in the `Models` folder of Documents is
+then compiled once and kept beside it as a `.mlmodelc`. Without either, the sheet says what to install and
+offers no work.
 
 ## The model contract is waveform in, waveform out
 

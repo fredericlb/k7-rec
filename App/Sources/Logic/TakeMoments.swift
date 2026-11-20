@@ -77,7 +77,7 @@ final class TakeMoments {
     }
 
     nonisolated static func defaultTitle(at seconds: TimeInterval) -> String {
-        String(format: "Moment %d:%02d", Int(seconds) / 60, Int(seconds) % 60)
+        String(format: "Highlight %d:%02d", Int(seconds) / 60, Int(seconds) % 60)
     }
 
     private func run() { found = detecting ? sift.detect(take.envelope).moments : [] }

@@ -51,7 +51,7 @@ public final class EngineInput: AudioInput, @unchecked Sendable {
     ) { [weak self] _ in self?.onLost?() }
     defer { if engine.isRunning == false { stop() } }
     engine.prepare()
-    try engine.start()
+    do { try engine.start() } catch let e as NSError where e.code == RecorderError.ioRefusedCode { throw RecorderError.audioStuck }
   }
 
   public func stop() {

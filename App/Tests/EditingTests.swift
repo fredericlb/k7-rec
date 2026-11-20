@@ -1,7 +1,7 @@
 // Editing a song folder: texts rewrite their file and row, an emptied text removes both, sheets and tags.
 import RehearsalStore
 import XCTest
-@testable import Rehearsal
+@testable import K7Rec
 
 @MainActor
 final class EditingTests: XCTestCase {

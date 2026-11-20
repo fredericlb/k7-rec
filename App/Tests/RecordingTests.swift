@@ -2,7 +2,7 @@
 import AVFoundation
 import RehearsalStore
 import XCTest
-@testable import Rehearsal
+@testable import K7Rec
 
 @MainActor
 final class RecordingTests: XCTestCase {

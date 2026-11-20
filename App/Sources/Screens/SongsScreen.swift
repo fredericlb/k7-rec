@@ -11,27 +11,34 @@ struct SongsScreen: View {
     @State private var missingOpen = false
     @State private var missingArtist = ""
     @State private var missingTitle = ""
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    private var metrics: Metrics { Metrics(sizeClass) }
 
     var body: some View {
         NavigationStack(path: $path) {
-            List(model.library.songs) { song in
-                NavigationLink(value: song) {
-                    VStack(alignment: .leading) {
-                        Text(song.title).font(.headline)
-                        if !song.artist.isEmpty { Text(song.artist).font(.subheadline).foregroundStyle(.secondary) }
+            // A ZStack, not an overlay: an overlay of the scroll view proposed no width, and the empty state wrapped at every word.
+            ZStack {
+                ScrollView {
+                    CardRows(items: model.library.songs, separatorInset: 74) { song in
+                        NavigationLink(value: song) {
+                            RowLabel(title: song.title, second: song.artist) { IconTile(symbol: "music.note") }
+                                .padding(.leading, K7Space.s20).padding(.trailing, K7Space.s16)
+                        }
+                        .buttonStyle(.plain)
                     }
+                    .padding(.horizontal, metrics.margin).padding(.top, 8)
+                    .opacity(model.library.songs.isEmpty ? 0 : 1)
                 }
-            }
-            .overlay {
                 if model.library.songs.isEmpty {
-                    ContentUnavailableView("No songs yet", systemImage: "music.note.list", description: Text("Import a song folder or an audio file with +."))
+                    EmptyState(symbol: "music.note", title: "No songs yet", sentence: "Import a song folder or an audio file with Add song.")
                 }
             }
+            .screenBackground()
+            .k7Header("Songs", subtitle: count(model.library.songs.count, "song"))
             .onChange(of: model.library.songs.count) { if DebugLaunch.openFirst, path.isEmpty, let s = model.library.songs.first { path = [s] } }
-            .navigationTitle("Songs")
             .navigationDestination(for: Song.self) { SongScreen(song: $0) }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button("Import a folder", systemImage: "folder") { pickFolder = true; picking = true }
                         Button("Import audio files", systemImage: "waveform") { pickFolder = false; picking = true }
@@ -39,8 +46,10 @@ struct SongsScreen: View {
                             Button("From the file server", systemImage: "externaldrive.connected.to.line.below") { browsingServer = true }
                             Button("Missing song", systemImage: "questionmark.circle") { missingOpen = true }
                         }
-                    } label: { Image(systemName: "plus") }
-                        .accessibilityLabel("Import")
+                    } label: {
+                        if metrics.wide { Label("Add song", systemImage: "plus").labelStyle(.titleAndIcon) } else { Image(systemName: "plus") }
+                    }
+                    .accessibilityLabel("Add song")
                 }
             }
             .sheet(isPresented: $browsingServer) { ServerImportSheet() }
@@ -64,3 +73,6 @@ struct SongsScreen: View {
         }
     }
 }
+
+/// "1 song", "3 songs": a count and its noun for a screen's subtitle.
+func count(_ n: Int, _ noun: String) -> String { "\(n) \(noun)\(n == 1 ? "" : "s")" }

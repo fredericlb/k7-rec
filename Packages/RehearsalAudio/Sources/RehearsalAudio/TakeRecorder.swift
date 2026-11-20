@@ -48,10 +48,27 @@ public struct TakeResult: Sendable, Equatable {
   }
 }
 
-public enum RecorderError: Error {
+public enum RecorderError: Error, LocalizedError {
   case notRecording, nothingRecorded
   /// The input's rate changed while paused; stop this take and continue it with `start(extending:)`.
   case rateChanged
+  /// The microphone gives no audio format (0 Hz): no file can be written at that rate.
+  case noInputFormat
+  /// The device's audio refused to start its input and output (CoreAudio's `'nope'`); a restart clears it.
+  case audioStuck
+
+  /// The code CoreAudio answers when the device's audio will not start its input and output, `'nope'`.
+  static let ioRefusedCode = 0x6E6F_7065
+
+  public var errorDescription: String? {
+    switch self {
+    case .noInputFormat: "the microphone gives no audio format (0 Hz). Another app may be holding it; close it and try again."
+    case .audioStuck: "the device's audio would not start. Restart the iPhone or iPad, then try again."
+    case .notRecording: "no take is running."
+    case .nothingRecorded: "nothing was recorded."
+    case .rateChanged: "the microphone changed its rate."
+    }
+  }
 }
 
 public final class TakeRecorder: @unchecked Sendable {
@@ -117,6 +134,7 @@ public final class TakeRecorder: @unchecked Sendable {
     }
     try session.activate(recording: true, headsetInput: headsetInput)
     let sr = input.sampleRate
+    guard sr > 0 else { throw RecorderError.noInputFormat }
     let url = directory.appendingPathComponent("take-\(UUID().uuidString).raw.caf")
     let file = try RawTakeFile(url: url, sampleRate: sr)
     do {

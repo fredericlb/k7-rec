@@ -36,7 +36,7 @@ struct StemsSheet: View {
             Image(systemName: "waveform.path").font(.largeTitle).foregroundStyle(.secondary).accessibilityHidden(true)
             Text(hasModel
                  ? "Split \(song.title) into drums, bass, other and vocals. It takes a few minutes; keep the app open."
-                 : "No separation model is installed. Put StemSeparator.mlpackage in the Models folder of Rehearsal, in the Files app.")
+                 : "No separation model is installed. Put StemSeparator.mlpackage in the Models folder of K7 REC, in the Files app.")
                 .multilineTextAlignment(.center)
             if hasModel, let note = StemAdvice.memoryNote() { Text(note).font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center) }
             Button("Separate", systemImage: "scissors") { separate() }

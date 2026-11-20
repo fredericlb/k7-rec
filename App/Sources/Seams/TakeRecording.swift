@@ -47,7 +47,8 @@ protocol TakeRecording: AnyObject {
     func start(songID: String, title: String) async -> Bool
     func pause()
     func resume() async
-    func stop() async
+    /// Ends the take and saves it; returns the saved take's id, nil when nothing was saved.
+    @discardableResult func stop() async -> String?
     /// Saves the raw takes a crash left behind; returns how many came back.
     @discardableResult func recoverLeftovers() async -> Int
     func take(id: String) async -> Take?
@@ -94,9 +95,11 @@ final class FakeTakeRecorder: TakeRecording {
     func resume() async { paused = false; pauseCause = nil }
     func recoverLeftovers() async -> Int { 0 }
 
-    func stop() async {
-        takes.insert(Take(id: UUID().uuidString, title: title, date: .now, duration: elapsed), at: 0)
+    @discardableResult func stop() async -> String? {
+        let id = UUID().uuidString
+        takes.insert(Take(id: id, title: title, date: .now, duration: elapsed), at: 0)
         startedAt = nil
+        return id
     }
 
     func take(id: String) async -> Take? { takes.first { $0.id == id } }

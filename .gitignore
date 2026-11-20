@@ -3,3 +3,7 @@
 .build/
 .DS_Store
 .swiftpm/
+# The stem model, bundled when present (docs/stems.md); fetched by App/fetch-model.sh
+App/Models/
+# Local build products (xcodebuild -derivedDataPath)
+App/build/

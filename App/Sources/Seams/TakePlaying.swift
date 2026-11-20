@@ -8,6 +8,8 @@ protocol TakePlaying: AnyObject {
     var isPlaying: Bool { get }
     /// Seconds from the start of the loaded file.
     var position: TimeInterval { get }
+    /// What is heard now, linear like the recorder's level (RMS × 3, at most 1); 0 unless playing.
+    var level: Double { get }
     /// Loads `url` under `id` unless it is already loaded; the one loaded before stops.
     func load(id: String, url: URL)
     func toggle()
@@ -28,6 +30,7 @@ final class FakeTakePlayer: TakePlaying {
     private(set) var loadedID: String?
     private(set) var isPlaying = false
     private(set) var position: TimeInterval = 0
+    var level = 0.0
     var onIdle: (() -> Void)?
     private(set) var range: ClosedRange<TimeInterval>?
 

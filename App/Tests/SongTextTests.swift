@@ -1,7 +1,7 @@
 // The song screen's pure logic: the sung line, transposition kept per song, tab grids, LRC, diagrams.
 import RehearsalText
 import XCTest
-@testable import Rehearsal
+@testable import K7Rec
 
 @MainActor
 final class SongTextTests: XCTestCase {

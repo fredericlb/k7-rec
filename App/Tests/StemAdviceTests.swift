@@ -1,6 +1,6 @@
 // The memory note: shown under the threshold, silent at and above it.
 import XCTest
-@testable import Rehearsal
+@testable import K7Rec
 
 final class StemAdviceTests: XCTestCase {
     func testASmallDeviceGetsANoteAndABigOneDoesNot() {

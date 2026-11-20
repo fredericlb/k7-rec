@@ -2,7 +2,7 @@
 import RehearsalAudio
 import RehearsalStore
 import XCTest
-@testable import Rehearsal
+@testable import K7Rec
 
 @MainActor
 final class TakeSafetyTests: XCTestCase {
@@ -116,6 +116,22 @@ final class TakeSafetyTests: XCTestCase {
         await model.stopTake()
 
         XCTAssertEqual(rested, 1)
+    }
+
+    func testAStoppedTakeClosesThePanelAndIsHandedToTheTakesTab() async throws {
+        let input = ScriptedInput()
+        let rec = StoreTakeRecorder(store: try Store(), takesFolder: try tempFolder(), makeInput: { input }, askMicrophone: { true })
+        let model = AppModel(recorder: rec, deactivate: {})
+        await model.startTake()
+        input.push(seconds: 1, amp: 0.3)
+        model.recorderOpen = true
+
+        await model.stopTake()
+
+        let id = try XCTUnwrap(model.stoppedTake)
+        XCTAssertFalse(model.recorderOpen)
+        let saved = await rec.take(id: id)
+        XCTAssertNotNil(saved, "the id is the saved take's")
     }
 
     func testACrashAfterARateChangeRecoversOneTakeNotTwo() async throws {

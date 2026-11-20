@@ -1,4 +1,5 @@
-// One song: the nav bar holds back, play, title and the menu, over a row of tabs, Info last and pinned right.
+// One song: the bar holds back, the title and artist, play and the menu; under it the waveform, then the views
+// as a glass switch, with Info and the instrumental switch at its right on iPad and the Mac, in the menu on iPhone.
 // What a reader gets wrong: the screen reads the live song by id, since the pushed value is a snapshot.
 import RehearsalText
 import SwiftUI
@@ -23,6 +24,8 @@ struct SongScreen: View {
     @State private var editing: TextKind?
     @State private var picking: PickKind?
     @State private var pickedKind: PickKind = .sheet
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    private var metrics: Metrics { Metrics(sizeClass) }
     private var live: Song { model.library.songs.first { $0.id == song.id } ?? song }
     private var playID: String { model.playID(of: live) }
     private var playing: Bool {
@@ -34,39 +37,49 @@ struct SongScreen: View {
     private var current: SongTab { selected.flatMap { $0 == .info || tabs.contains($0) ? $0 : nil } ?? SongTabs.opening(live) }
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 14) {
             if let url = model.playURL(of: live), !wave.samples.isEmpty {
                 WaveformView(
                     samples: wave.samples, duration: wave.duration, playing: playing, position: { model.player.position },
                     onSeek: { model.seek(id: playID, url: url, to: $0) })
-                    .padding(.horizontal)
+                    .frame(height: metrics.well(116))
+                    .waveWell()
+                    .padding(.horizontal, metrics.margin)
             }
-            HStack {
-                ScrollViewReader { proxy in
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack { ForEach(tabs, id: \.self) { tabButton($0).id($0) } }
+            HStack(spacing: K7Space.s8) {
+                GlassSegments(items: tabs.map { ($0, $0.rawValue) }, selection: current, wide: metrics.wide) { selected = $0 }
+                if metrics.wide {
+                    Spacer(minLength: 0)
+                    if hasStems { versionSwitch }
+                    Button { selected = .info } label: {
+                        Image(systemName: current == .info ? "info.circle.fill" : "info.circle").font(.system(size: 20)).frame(width: 30, height: 30)
                     }
-                    .onChange(of: current) { _, tab in withAnimation { proxy.scrollTo(tab) } }
-                    .onAppear { proxy.scrollTo(current) }
+                    .buttonStyle(.glass)
+                    .buttonBorderShape(.circle)
+                    .accessibilityLabel("Info")
+                    .accessibilityAddTraits(current == .info ? .isSelected : [])
                 }
-                if hasStems { versionSwitch }
-                tabButton(.info, icon: "info.circle")
             }
-            .padding(.horizontal)
-            Divider()
+            .padding(.horizontal, metrics.margin)
             content.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .navigationBarTitleDisplayMode(.inline)
+        .padding(.top, 6)
+        .screenBackground()
+        .k7Header(live.title, subtitle: live.artist)
         .toolbar { header }
-        .popover(isPresented: $menuOpen, attachmentAnchor: .point(.topLeading), arrowEdge: .top) {
+        .popover(isPresented: $menuOpen, attachmentAnchor: .point(.topTrailing), arrowEdge: .top) {
             SongMenu(
                 song: live,
                 edit: { kind in menuOpen = false; editing = kind },
                 addSheet: { menuOpen = false; picking = .sheet; pickedKind = .sheet },
                 importLRC: { menuOpen = false; picking = .lrc; pickedKind = .lrc },
                 downloadLyrics: { menuOpen = false; Task { await model.downloadLyrics(for: live) } },
-                stems: { menuOpen = false; stemsOpen = true })
+                stems: { menuOpen = false; stemsOpen = true },
+                info: metrics.wide ? nil : { menuOpen = false; selected = .info },
+                instrumental: metrics.wide || !hasStems ? nil : model.playsInstrumental(live),
+                switchVersion: { Task { await model.switchVersion(of: live) } })
                 .presentationCompactAdaptation(.popover)
+                .presentationBackground(k7.menu)
         }
         .task {
             if let t = DebugLaunch.tab { selected = t }
@@ -92,26 +105,22 @@ struct SongScreen: View {
         }
     }
 
+    /// Play and the song's menu, side by side at the right of the bar, so the glass makes them one capsule.
     @ToolbarContentBuilder private var header: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
+        ToolbarItemGroup(placement: .topBarTrailing) {
             Button {
                 if let url = model.playURL(of: live) { model.togglePlay(id: playID, url: url) }
             } label: {
-                Image(systemName: playing ? "pause.fill" : "play.fill").frame(width: 44, height: 44).contentShape(Rectangle())
+                Image(systemName: playing ? "pause.fill" : "play.fill").frame(minWidth: 30, minHeight: 30)
             }
             .accessibilityLabel(playing ? "Pause" : "Play")
             .disabled(model.playURL(of: live) == nil)
-        }
-        ToolbarItem(placement: .principal) {
-            Text(live.title).font(.headline).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
-        }
-        ToolbarItem(placement: .topBarLeading) {
             #if targetEnvironment(macCatalyst)
             // A popover anchored in the bar does not open under Catalyst; the Mac gets a menu of the same actions.
-            Menu { actions() } label: { Image(systemName: "ellipsis").target() }
+            Menu { actions() } label: { Image(systemName: "ellipsis").frame(minWidth: 30, minHeight: 30) }
                 .accessibilityLabel("Song menu")
             #else
-            Button { menuOpen = true } label: { Image(systemName: "ellipsis").target() }
+            Button { menuOpen = true } label: { Image(systemName: "ellipsis").frame(minWidth: 30, minHeight: 30) }
                 .accessibilityLabel("Song menu")
             #endif
         }
@@ -132,28 +141,16 @@ struct SongScreen: View {
         let instrumental = model.playsInstrumental(live)
         return Button { Task { await model.switchVersion(of: live) } } label: {
             Group {
-                if model.mixing { ProgressView() } else { Image(systemName: instrumental ? "mic.slash.fill" : "mic.fill") }
+                if model.mixing { ProgressView() } else { Image(systemName: instrumental ? "mic.slash" : "mic").font(.system(size: 20)) }
             }
-            .frame(minWidth: 44, minHeight: 44)
-            .background(instrumental ? Color.accentColor.opacity(0.2) : .clear, in: Capsule())
-            .contentShape(Capsule())
+            .frame(width: 30, height: 30)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glass)
+        .buttonBorderShape(.circle)
+        .tint(instrumental ? .accentColor : nil)
         .disabled(model.mixing)
         .accessibilityLabel(instrumental ? "Play the full song" : "Play the instrumental")
         .accessibilityIdentifier("versionSwitch")
-    }
-
-    private func tabButton(_ tab: SongTab, icon: String? = nil) -> some View {
-        Button { selected = tab } label: {
-            Group { if let icon { Image(systemName: icon) } else { Text(tab.rawValue) } }
-                .padding(.horizontal, 10).frame(minWidth: 44, minHeight: 44)
-                .background(current == tab ? Color.accentColor.opacity(0.2) : .clear, in: Capsule())
-                .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(tab.rawValue)
-        .accessibilityAddTraits(current == tab ? .isSelected : [])
     }
 
     @ViewBuilder private var content: some View {

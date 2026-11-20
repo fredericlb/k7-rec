@@ -1,7 +1,7 @@
 // Import names its copy by the song's id and writes a uuid into the copy, never into what was picked.
 import RehearsalStore
 import XCTest
-@testable import Rehearsal
+@testable import K7Rec
 
 @MainActor
 final class ImportNamingTests: XCTestCase {

@@ -8,6 +8,7 @@ struct LyricsTab: View {
     let onTap: (Int) -> Void
 
     @State private var memo = ParsedMemo()
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
         let (lines, timed) = memo.get(text, 0) { t, _ in (ChordSheet.parse(t), Set(LyricsTiming.byLine(t).map(\.line))) }
@@ -23,9 +24,11 @@ struct LyricsTab: View {
     @ViewBuilder private func row(_ line: ParsedLine) -> some View {
         switch line {
         case .empty: Text(" ")
-        case .section(let label): Text(label).font(.subheadline.bold()).foregroundStyle(.secondary)
+        case .section(let label): Text(label).font(.subheadline.bold()).foregroundStyle(k7.textTertiary)
         case .chords: EmptyView()
-        case .lyrics(let segments): Text(segments.map(\.text).joined()).font(.title3)
+        case .lyrics(let segments): Text(segments.map(\.text).joined())
+            .font(Metrics(sizeClass).wide ? .system(size: 22, weight: .bold) : .system(size: 19, weight: .semibold))
+            .lineSpacing(Metrics(sizeClass).wide ? 6 : 11)
         }
     }
 }

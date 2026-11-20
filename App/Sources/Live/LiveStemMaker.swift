@@ -27,7 +27,7 @@ final class LiveStemMaker: StemMaking {
         } catch is CancellationError {
             return nil
         } catch StemError.modelMissing {
-            return "No separation model is installed. Put \(Self.modelName).mlpackage in the Models folder of Rehearsal, in the Files app."
+            return "No separation model is installed. Put \(Self.modelName).mlpackage in the Models folder of K7 REC, in the Files app."
         } catch {
             return "The song could not be separated: \(error.localizedDescription)"
         }

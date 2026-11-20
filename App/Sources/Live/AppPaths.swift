@@ -12,7 +12,7 @@ struct AppPaths {
     /// The iCloud container's Documents folder, nil when the files are local only.
     let cloud: URL?
 
-    static let containerID = "iCloud.se.frediver.rehearsal"
+    static let containerID = "iCloud.rocks.k7.rec"
 
     /// All of them under one root, which is how the tests run in a temp folder.
     init(root: URL) {

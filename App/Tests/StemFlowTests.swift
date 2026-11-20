@@ -2,7 +2,7 @@
 import AVFoundation
 import RehearsalStems
 import XCTest
-@testable import Rehearsal
+@testable import K7Rec
 
 @MainActor
 final class StemFlowTests: XCTestCase {

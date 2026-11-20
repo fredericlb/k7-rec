@@ -2,6 +2,7 @@
 // What reads wrong: pause drops the schedule and play re-schedules from the frame it stood on.
 
 import AVFoundation
+import os
 
 public enum PlayerState: Sendable, Equatable { case stopped, playing, paused }
 
@@ -30,6 +31,8 @@ public final class TakePlayer: PlaybackYielding {
   private var lastFrame = 0
   private let session: SessionHost
   private let configToken = ObserverToken()
+  /// The RMS of the last buffer heard, after the gain, written by the audio thread's tap.
+  private let meter = OSAllocatedUnfairLock(initialState: Float(0))
   // Offline rendering never reports played-back, so a test asks for consumed.
   var completionType = AVAudioPlayerNodeCompletionCallbackType.dataPlayedBack
 
@@ -52,6 +55,7 @@ public final class TakePlayer: PlaybackYielding {
     engine.connect(eq, to: boost, format: file.processingFormat)
     engine.connect(boost, to: engine.mainMixerNode, format: file.processingFormat)
     applyGain()
+    boost.installTap(onBus: 0, bufferSize: 2048, format: nil, block: Self.metering(into: meter))
     session.onInterruption = { [weak self] _ in MainActor.assumeIsolated { self?.pause() } }
     session.observe()
     configToken.set(
@@ -62,6 +66,26 @@ public final class TakePlayer: PlaybackYielding {
 
   deinit {
     session.unobserve()
+  }
+
+  /// What is heard now, as the RMS of the last buffer after the gain; 0 unless playing.
+  public var outputRMS: Float { state == .playing ? meter.withLock { $0 } : 0 }
+
+  /// The tap that keeps the meter; made outside the main actor, since the audio thread calls it.
+  nonisolated private static func metering(into meter: OSAllocatedUnfairLock<Float>) -> AVAudioNodeTapBlock {
+    { buffer, _ in
+      let value = rms(buffer)
+      meter.withLock { $0 = value }
+    }
+  }
+
+  /// The RMS over every channel of a buffer.
+  nonisolated static func rms(_ buffer: AVAudioPCMBuffer) -> Float {
+    guard let data = buffer.floatChannelData, buffer.frameLength > 0 else { return 0 }
+    let n = Int(buffer.frameLength), channels = Int(buffer.format.channelCount)
+    var sum: Float = 0
+    for c in 0..<channels { for i in 0..<n { sum += data[c][i] * data[c][i] } }
+    return (sum / Float(n * channels)).squareRoot()
   }
 
   /// The playhead, in seconds from the start of the file.

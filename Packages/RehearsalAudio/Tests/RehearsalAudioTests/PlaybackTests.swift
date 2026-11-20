@@ -158,6 +158,16 @@ final class PlaybackTests: XCTestCase {
     XCTAssertEqual(beats, atStop)
   }
 
+  func testThePlayerMetersWhatItPlaysAndNothingWhenPaused() throws {
+    let (p, e) = try offlinePlayer(seconds: 2)
+    XCTAssertEqual(p.outputRMS, 0)
+    try p.play()
+    for _ in 0..<3 { try render(e, frames: 4096) }
+    XCTAssertGreaterThan(p.outputRMS, 0.05, "a 0.5 tone is heard")
+    p.pause()
+    XCTAssertEqual(p.outputRMS, 0)
+  }
+
   func testPlayerLoopsItsRange() throws {
     let (p, e) = try offlinePlayer(seconds: 2)
     p.setRange(0.5...0.75, loops: true)

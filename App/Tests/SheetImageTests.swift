@@ -1,7 +1,7 @@
 // A sheet photo is decoded at a bounded size.
 import UIKit
 import XCTest
-@testable import Rehearsal
+@testable import K7Rec
 
 final class SheetImageTests: XCTestCase {
     func testALargePhotoComesBackNoLargerThanTheLimit() throws {

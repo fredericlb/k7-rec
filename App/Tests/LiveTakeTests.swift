@@ -1,6 +1,6 @@
 // The live take: re-levelling, the drawn window and the count of moments found so far.
 import XCTest
-@testable import Rehearsal
+@testable import K7Rec
 
 final class LiveTakeTests: XCTestCase {
     func testTheEnvelopeIsLevelledToItsLoudestBucket() {

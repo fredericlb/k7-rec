@@ -1,7 +1,7 @@
 // What the live stem maker decides without a model: where the stems live, what it says when none is installed.
 import RehearsalStems
 import XCTest
-@testable import Rehearsal
+@testable import K7Rec
 
 @MainActor
 final class StemMakerTests: XCTestCase {

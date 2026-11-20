@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Rehearsal</string>
+	<string>K7 REC</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>$(PRODUCT_NAME)</string>
+	<string>K7 REC</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -25,17 +25,17 @@
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Rehearsal connects to your file server to import audio files.</string>
+	<string>K7 REC connects to your file server to import audio files.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Rehearsal records your takes with the microphone.</string>
+	<string>K7 REC records your takes with the microphone.</string>
 	<key>NSUbiquitousContainers</key>
 	<dict>
-		<key>iCloud.se.frediver.rehearsal</key>
+		<key>iCloud.rocks.k7.rec</key>
 		<dict>
 			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
 			<true/>
 			<key>NSUbiquitousContainerName</key>
-			<string>Rehearsal</string>
+			<string>K7 REC</string>
 			<key>NSUbiquitousContainerSupportedFolderLevels</key>
 			<string>Any</string>
 		</dict>

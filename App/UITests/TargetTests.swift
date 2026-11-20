@@ -30,7 +30,9 @@ final class TargetTests: XCTestCase {
         let app = try launch()
         // A navigation bar item is 36 pt tall whatever its label asks for; the bar sizes it.
         assertTarget(app.buttons["Song menu"].firstMatch, "Song menu", minHeight: 36)
-        for tab in ["Chords", "Lyrics", "Info"] { assertTarget(app.buttons[tab].firstMatch, tab) }
+        for tab in ["Chords", "Lyrics"] { assertTarget(app.buttons[tab].firstMatch, tab) }
+        // On iPhone, Info sits in the song menu (the design system's platform rules).
+        app.buttons["Song menu"].firstMatch.tap()
         app.buttons["Info"].firstMatch.tap()
         for name in ["Transpose down", "Transpose up"] { assertTarget(app.buttons[name].firstMatch, name) }
     }
@@ -42,14 +44,22 @@ final class TargetTests: XCTestCase {
         }
         let app = XCUIApplication()
         app.launch()
-        app.buttons["Takes"].tap()
+        app.buttons["Takes"].firstMatch.tap()
         assertTarget(app.buttons["Record a take"].firstMatch, "Record a take", minHeight: 36)
         app.buttons["Record a take"].firstMatch.tap()
         app.tap()
         let led = app.buttons["Take running"].firstMatch
-        guard led.waitForExistence(timeout: 8) else { throw XCTSkip("the simulator could not start a take") }
+        guard led.waitForExistence(timeout: 8) else {
+            let said = app.alerts.firstMatch.staticTexts.allElementsBoundByIndex.map { $0.label }.joined(separator: " / ")
+            throw XCTSkip("the simulator could not start a take: \(said)")
+        }
         led.tap()
-        for name in ["Slower", "Faster", "Start metronome"] { assertTarget(app.buttons[name].firstMatch, name) }
+        let metronome = app.buttons["metronomeButton"].firstMatch
+        assertTarget(metronome, "Metronome", minHeight: 36)
+        metronome.tap()
+        for name in ["Slower", "Faster"] { assertTarget(app.buttons[name].firstMatch, name) }
+        XCTAssertTrue(app.switches["metronomeSwitch"].firstMatch.exists)
+        app.staticTexts["Recording"].firstMatch.tap()
         let pause = app.buttons["Pause take"].firstMatch
         guard pause.waitForExistence(timeout: 8) else { throw XCTSkip("the simulator could not start a take") }
         assertTarget(pause, "Pause take")

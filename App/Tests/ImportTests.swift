@@ -1,7 +1,7 @@
 // Import into a temp store: a song folder keeps its texts and is idempotent, an audio file is a song alone.
 import RehearsalStore
 import XCTest
-@testable import Rehearsal
+@testable import K7Rec
 
 @MainActor
 final class ImportTests: XCTestCase {

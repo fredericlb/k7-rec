@@ -1,7 +1,7 @@
 // A sheet's kind, a score's parts, one part cut out, and a compressed .mxl opened to its score.
 import Compression
 import XCTest
-@testable import Rehearsal
+@testable import K7Rec
 
 final class MusicXMLTests: XCTestCase {
     private let score = """

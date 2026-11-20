@@ -1,7 +1,7 @@
 // The metronome control follows the click when the system stops it.
 import RehearsalAudio
 import XCTest
-@testable import Rehearsal
+@testable import K7Rec
 
 @MainActor
 final class MetronomeControlTests: XCTestCase {

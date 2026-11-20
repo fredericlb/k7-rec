@@ -1,5 +1,5 @@
-// One take: its waveform, play, rename and delete, then its moments and markers (Take/).
-// What a reader gets wrong: detection is a button on each visit, never remembered; a moment plays its own span.
+// One take: its waveform, play, rename and delete, then its highlights and markers (Take/).
+// What a reader gets wrong: detection is a button on each visit, never remembered; a highlight plays its own span.
 import SwiftUI
 
 struct TakeScreen: View {
@@ -12,18 +12,20 @@ struct TakeScreen: View {
     @State private var deleting = false
     @State private var prompt: TakePrompt?
     @State private var draft = ""
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    private var metrics: Metrics { Metrics(sizeClass) }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 18) {
                 if let take, let moments { content(take, moments) } else { ProgressView().frame(maxWidth: .infinity) }
             }
-            .padding()
+            .padding(.horizontal, metrics.margin).padding(.vertical, 6)
         }
-        .navigationTitle(take?.title ?? "Take")
-        .navigationBarTitleDisplayMode(.inline)
+        .screenBackground()
+        .k7Header(take?.title ?? "Take", subtitle: take?.date.formatted(date: .complete, time: .shortened) ?? "")
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
+            ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button("Rename", systemImage: "pencil") { draft = take?.title ?? ""; renaming = true }
                     Button("Delete", systemImage: "trash", role: .destructive) { deleting = true }
@@ -42,7 +44,7 @@ struct TakeScreen: View {
             Button("OK") { if let p = prompt, let moments { Task { await answer(p, moments) } } }
         }
         .confirmationDialog("Delete this take?", isPresented: $deleting, titleVisibility: .visible) {
-            Button("Delete the take, its moments and markers", role: .destructive) { Task { await remove() } }
+            Button("Delete the take, its highlights and markers", role: .destructive) { Task { await remove() } }
         }
         .task {
             take = await model.recorder.take(id: takeID)
@@ -52,43 +54,70 @@ struct TakeScreen: View {
 
     @ViewBuilder
     private func content(_ take: Take, _ moments: TakeMoments) -> some View {
-        Text(take.date.formatted(date: .complete, time: .shortened)).font(.subheadline).foregroundStyle(.secondary)
         WaveformView(
             samples: take.envelope, duration: take.duration, playing: playing, position: { model.player.position },
             onSeek: { seconds in if let url = take.audioURL { model.seek(id: take.id, url: url, to: seconds) } },
             marks: WaveformMarks(
                 duration: take.duration, floor: moments.detecting ? moments.sift.floor : nil,
                 found: moments.found.map { $0.startSec...$0.endSec }, saved: moments.saved.map(\.span), pins: moments.pins.map(\.at)))
-        HStack(spacing: 20) {
+            .overlay { spans(take, moments) }
+            .frame(height: metrics.well(160))
+            .waveWell()
+        HStack(spacing: 16) {
             Button { if let url = take.audioURL { model.togglePlay(id: take.id, url: url) } } label: {
-                Image(systemName: playing && model.player.range == nil ? "pause.circle.fill" : "play.circle.fill").font(.largeTitle)
+                Image(systemName: playing && model.player.range == nil ? "pause.fill" : "play.fill").font(.title2)
+                    .foregroundStyle(k7.onAccent).frame(width: 44, height: 44)
             }
+            .buttonStyle(.glassProminent)
+            .buttonBorderShape(.circle)
             .accessibilityLabel(playing && model.player.range == nil ? "Pause" : "Play")
-            Text(clock(take.duration)).monospacedDigit()
+            Text(clock(take.duration)).font(.title2.weight(.medium)).monospacedDigit()
+            Spacer(minLength: 0)
         }
-        HStack(spacing: 12) {
-            Button { draft = ""; prompt = .newPin } label: { Label("Marker", systemImage: "mappin").lineLimit(1) }.buttonStyle(.bordered)
-            Toggle("Detect moments", isOn: Binding(get: { moments.detecting }, set: { moments.setDetecting($0) }))
-                .toggleStyle(.button).lineLimit(1).fixedSize().accessibilityIdentifier("detect")
+        HStack(spacing: 10) {
+            Button { draft = ""; prompt = .newPin } label: { Label("Marker", systemImage: "mappin").lineLimit(1).foregroundStyle(k7.accentSoft) }
+                .buttonStyle(.glass).controlSize(.large)
+            Toggle(isOn: Binding(get: { moments.detecting }, set: { moments.setDetecting($0) })) {
+                Label("Detect moments", systemImage: "sparkles").lineLimit(1)
+            }
+            .toggleStyle(.button).buttonStyle(.glass).controlSize(.large).fixedSize().accessibilityIdentifier("detect")
         }
         if moments.detecting {
             DetectPanel(
                 moments: moments, playing: { isPlaying($0, take) },
                 play: { span in if let url = take.audioURL { model.playSpan(id: take.id, url: url, span: span, loops: false) } },
                 save: { m in draft = TakeMoments.defaultTitle(at: m.startSec); prompt = .saveMoment(m) })
+                .padding(20).card()
         }
         if !moments.saved.isEmpty {
-            Text("Moments").font(.headline)
+            SectionTitle("Highlights").padding(.bottom, -10)
             SavedMomentRows(
                 moments: moments.saved, playing: { isPlaying($0, take) },
                 play: { m in if let url = take.audioURL { model.playSpan(id: take.id, url: url, span: m.span, loops: true) } },
                 rename: { draft = $0.title; prompt = .renameMoment($0) }, delete: { m in Task { await moments.delete(m) } })
         }
         if !moments.pins.isEmpty {
-            Text("Markers").font(.headline)
+            SectionTitle("Markers").padding(.bottom, -10)
             PinRows(
                 pins: moments.pins, seek: { p in if let url = take.audioURL { model.seek(id: take.id, url: url, to: p.at) } },
                 rename: { draft = $0.note; prompt = .renamePin($0) }, delete: { p in Task { await moments.delete(p) } })
+        }
+    }
+
+    /// Each kept highlight as a button over its span of the waveform: a tap plays it in a loop, as its row does.
+    private func spans(_ take: Take, _ moments: TakeMoments) -> some View {
+        GeometryReader { geo in
+            ForEach(moments.saved) { m in
+                let x = take.duration > 0 ? m.start / take.duration * geo.size.width : 0
+                let w = take.duration > 0 ? max(12, (m.end - m.start) / take.duration * geo.size.width) : 0
+                Button { if let url = take.audioURL { model.playSpan(id: take.id, url: url, span: m.span, loops: true) } } label: {
+                    Rectangle().fill(isPlaying(m.span, take) ? k7.highlightFillSelected : Color.clear)
+                }
+                .buttonStyle(.plain)
+                .frame(width: w, height: geo.size.height)
+                .offset(x: x)
+                .accessibilityLabel("\(m.title), \(clock(m.start)) to \(clock(m.end))")
+            }
         }
     }
 

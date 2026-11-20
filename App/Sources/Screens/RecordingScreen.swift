@@ -1,106 +1,160 @@
-// The take panel, a sheet from the rec button: the running take with its live waveform, or a way to start one, and the metronome.
-// What a reader gets wrong: a call pauses the take, it never ends it; Resume continues the same take.
+// The take panel, a sheet from the rec button: the running take (clock, level, live waveform with its highlight
+// spans, transport) or a way to start one; the metronome is a menu from its header. A call pauses a take, never ends it.
 import SwiftUI
 
 struct RecordingScreen: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @State private var metronomeOpen = false
+    private var metrics: Metrics { Metrics(sizeClass) }
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if model.recording { running } else { idle }
-            }
-            .navigationTitle("Recording")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { model.recorderOpen = false } } }
+        VStack(spacing: 22) {
+            header
+            if model.recording { running } else { idle }
         }
+        .padding(.horizontal, metrics.wide ? 28 : 20).padding(.top, 14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .presentationBackground { LinearGradient(colors: [k7.sheetTop, k7.sheetBottom], startPoint: .top, endPoint: .bottom) }
+        .presentationCornerRadius(K7Radius.bar)
+        .presentationDetents(metrics.wide ? [.large] : [.height(560), .large])
     }
 
-    private var idle: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "record.circle").font(.system(size: 56)).foregroundStyle(.secondary).accessibilityHidden(true)
-            Text("No take is running").foregroundStyle(.secondary)
-            Button { Task { await model.startTake() } } label: { Label("Start recording", systemImage: "circle.fill") }
-                .buttonStyle(.borderedProminent).tint(.red)
-            metronome.padding(.top, 24)
+    private var header: some View {
+        ZStack {
+            Text("Recording").font(.headline.weight(.bold))
+            HStack {
+                Button { metronomeOpen = true } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "metronome").font(.system(size: 18))
+                        if model.metronome.running { Text("\(Int(model.metronome.bpm))").monospacedDigit() }
+                    }
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(model.metronome.running ? k7.onAccent : k7.text)
+                    .padding(.horizontal, 12).frame(minWidth: K7Size.touch, minHeight: K7Size.touch)
+                    .background(model.metronome.running ? k7.accent : k7.fillControl, in: Capsule())
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(model.metronome.running ? "Metronome, on at \(Int(model.metronome.bpm)) bpm" : "Metronome, off")
+                .accessibilityIdentifier("metronomeButton")
+                .popover(isPresented: $metronomeOpen, attachmentAnchor: .rect(.bounds), arrowEdge: .top) {
+                    metronome.presentationCompactAdaptation(.popover).presentationBackground(k7.menu)
+                }
+                Spacer()
+                Button("Done") { model.recorderOpen = false }
+                    .font(.system(size: 15, weight: .semibold))
+                    .buttonStyle(.glass)
+            }
         }
-        .padding()
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(minHeight: K7Size.touch)
     }
 
     /// The click to play along to; it lives in the model, so it keeps going while a take starts or stops.
     private var metronome: some View {
-        HStack {
-            Label("Metronome", systemImage: "metronome")
-            Spacer()
-            StepperControl(
-                label: "\(Int(model.metronome.bpm)) bpm", minusLabel: "Slower", plusLabel: "Faster",
-                minus: { model.metronome.step(-1) }, plus: { model.metronome.step(1) })
-            Button { model.metronome.toggle() } label: { Image(systemName: model.metronome.running ? "stop.fill" : "play.fill").target() }
-                .buttonStyle(.bordered)
-                .accessibilityLabel(model.metronome.running ? "Stop metronome" : "Start metronome")
+        VStack(spacing: 0) {
+            Toggle("Metronome", isOn: Binding(get: { model.metronome.running }, set: { _ in model.metronome.toggle() }))
+                .frame(minHeight: 54)
+                .accessibilityIdentifier("metronomeSwitch")
+            Rectangle().fill(.white.opacity(0.12)).frame(height: 1)
+            HStack {
+                Text("Tempo")
+                Spacer()
+                StepperControl(
+                    label: "\(Int(model.metronome.bpm)) bpm", minusLabel: "Slower", plusLabel: "Faster",
+                    minus: { model.metronome.step(-1) }, plus: { model.metronome.step(1) })
+            }
+            .frame(minHeight: 58)
         }
+        .padding(.leading, 18).padding(.trailing, 8).padding(.vertical, 4)
+        .frame(width: 300)
+    }
+
+    private var idle: some View {
+        EmptyState(symbol: "record.circle", title: "No take is running") {
+            Button { Task { await model.startTake(song: model.songForTake) } } label: {
+                HStack(spacing: 10) {
+                    Circle().fill(k7.onDanger).frame(width: 18, height: 18)
+                    Text("Start recording")
+                }
+                .font(.system(size: 17, weight: .semibold)).foregroundStyle(k7.onDanger)
+                .padding(.leading, 20).padding(.trailing, 26).frame(height: 52)
+                .background(k7.danger, in: Capsule())
+                .shadow(color: k7.danger.opacity(0.4), radius: 12, y: 8)
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxHeight: 360)
     }
 
     private var running: some View {
         TimelineView(.periodic(from: .now, by: 0.1)) { _ in
-            ScrollView {
-                VStack(spacing: 20) {
-                    if let why = reason { Text(why).font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center).accessibilityIdentifier("pauseReason") }
-                    Text(format(model.recorder.elapsed)).font(.system(size: 56, weight: .light)).monospacedDigit()
-                    ProgressView(value: min(1, model.recorder.level)).accessibilityLabel("Input level")
-                    ZStack {
-                        WaveformBars(samples: model.recorder.liveSamples).equatable()
-                        WaveformMarks(duration: LiveTake.windowSeconds, start: model.recorder.liveWindowStart, found: model.recorder.highlights.map(\.span)).equatable()
-                    }
-                    .frame(height: 120).accessibilityHidden(true)
-                    metronome
-                    controls
-                    highlights
+            VStack(spacing: 18) {
+                if let why = reason {
+                    Text(why).font(.callout).foregroundStyle(k7.textSecondary).multilineTextAlignment(.center).accessibilityIdentifier("pauseReason")
                 }
-                .padding()
+                Text(clock(model.recorder.elapsed)).font(.system(size: 76, weight: .light)).tracking(-1).monospacedDigit()
+                ProgressView(value: LevelMeter.position(model.recorder.paused ? 0 : model.recorder.level))
+                    .tint(k7.accent)
+                    .accessibilityLabel("Input level")
+                LiveWell(
+                    samples: model.recorder.liveSamples, start: model.recorder.liveWindowStart, paused: model.recorder.paused,
+                    highlights: model.recorder.highlights, heard: heardHighlight, range: model.player.range,
+                    position: model.player.position, listen: { model.listen(to: $0) })
+                    .frame(height: metrics.well(120))
+                if let h = heardHighlight {
+                    HStack {
+                        Text("Playing highlight · \(clock(h.span.lowerBound)) – \(clock(h.span.upperBound))").foregroundStyle(k7.highlight)
+                        Spacer()
+                        Text("Recording paused").foregroundStyle(k7.textSecondary)
+                    }
+                    .font(.system(size: 15, weight: .semibold)).monospacedDigit()
+                }
+                controls.padding(.top, 4)
             }
+            .padding(.bottom, metrics.wide ? 30 : 44)
         }
     }
 
     private var controls: some View {
-        HStack(spacing: 32) {
-            Button {
-                if model.recorder.paused { Task { await model.resumeTake() } } else { model.recorder.pause() }
-            } label: {
-                if model.recorder.pauseCause == .user || !model.recorder.paused {
-                    Image(systemName: model.recorder.paused ? "play.fill" : "pause.fill").font(.title)
-                } else { Text("Resume").bold() }
-            }
-            .target().frame(minWidth: 56, minHeight: 56)
-            .accessibilityLabel(model.recorder.paused ? "Resume take" : "Pause take")
-            Button { Task { await model.stopTake() } } label: { Image(systemName: "stop.fill").font(.title) }
-                .target().frame(minWidth: 56, minHeight: 56)
-                .accessibilityLabel("Stop take")
-        }
-    }
-
-    /// The moments found so far; playing one rests the take, Resume carries on recording.
-    private var highlights: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("\(model.recorder.highlights.count) highlights", systemImage: "scope").font(.headline).monospacedDigit()
-                .accessibilityIdentifier("liveMoments")
-            ForEach(model.recorder.highlights) { h in
-                HStack(spacing: 12) {
-                    Button { model.listen(to: h) } label: {
-                        Image(systemName: heard(h) ? "stop.fill" : "play.fill").target()
+        HStack(spacing: 28) {
+            if heardHighlight != nil || (model.recorder.paused && model.recorder.pauseCause != .user) {
+                Button { Task { await model.resumeTake() } } label: {
+                    HStack(spacing: 10) {
+                        Circle().fill(.white).frame(width: 16, height: 16)
+                        Text("Resume")
                     }
-                    .buttonStyle(.bordered)
-                    .accessibilityLabel(heard(h) ? "Stop highlight" : "Play highlight, pauses the recording")
-                    WaveformBars(samples: h.samples).equatable().frame(height: 44).accessibilityHidden(true)
-                    Text(format(h.span.lowerBound)).font(.caption).monospacedDigit().foregroundStyle(.secondary)
+                    .font(.system(size: 17, weight: .semibold)).foregroundStyle(k7.onAccent)
+                    .padding(.leading, 24).padding(.trailing, 30).frame(height: 68)
+                    .background(k7.accent, in: Capsule())
+                    .shadow(color: k7.accent.opacity(0.4), radius: 11, y: 8)
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Resume take")
+            } else {
+                Button {
+                    if model.recorder.paused { Task { await model.resumeTake() } } else { model.recorder.pause() }
+                } label: {
+                    Image(systemName: model.recorder.paused ? "play.fill" : "pause.fill").font(.system(size: 28))
+                        .frame(width: 68, height: 68).fillControl(Circle()).contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(model.recorder.paused ? "Resume take" : "Pause take")
             }
+            Button { Task { await model.stopTake() } } label: {
+                Image(systemName: "stop.fill").font(.system(size: 28)).foregroundStyle(k7.onDanger)
+                    .frame(width: 68, height: 68).background(k7.danger, in: Circle())
+                    .shadow(color: k7.danger.opacity(0.4), radius: 12, y: 8)
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Stop take")
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func heard(_ h: Highlight) -> Bool { model.listeningTo == h.id && model.player.isPlaying }
+    private var heardHighlight: Highlight? {
+        model.recorder.highlights.first { model.listeningTo == $0.id && model.player.isPlaying }
+    }
 
     private var reason: String? {
         switch model.recorder.pauseCause {
@@ -108,9 +162,5 @@ struct RecordingScreen: View {
         case .inputLost: "The microphone was lost. The take is kept."
         default: nil
         }
-    }
-
-    private func format(_ t: TimeInterval) -> String {
-        String(format: "%d:%02d", Int(t) / 60, Int(t) % 60)
     }
 }

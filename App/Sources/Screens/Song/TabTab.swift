@@ -8,6 +8,7 @@ struct TabTab: View {
     let text: String
 
     @State private var headerOpen = false
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @ScaledMetric private var size = 13.0
 
     var body: some View {
@@ -23,10 +24,13 @@ struct TabTab: View {
                     .buttonStyle(.borderless)
                     if headerOpen { nodes(parts.header) }
                 }
-                nodes(parts.body)
+                VStack(alignment: .leading, spacing: 4) { nodes(parts.body) }
+                    .padding(.horizontal, 12).padding(.vertical, 14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .card(fill: k7.surfaceSolid)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding()
+            .padding(.horizontal, Metrics(sizeClass).margin).padding(.vertical, 6)
         }
     }
 
@@ -35,9 +39,9 @@ struct TabTab: View {
             switch node {
             case .empty: Color.clear.frame(height: size * 0.7)
             case .section(let label):
-                Text(label.uppercased()).font(.caption.bold()).tracking(1).foregroundStyle(.orange).padding(.top, 10)
+                Text(label.uppercased()).font(.caption.bold()).tracking(1).foregroundStyle(k7.accentIcon).padding(.top, 10)
             case .text(let t):
-                Text(t).font(.system(size: size, design: .monospaced)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(t).font(.system(size: size, design: .monospaced)).foregroundStyle(k7.textSecondary).fixedSize(horizontal: false, vertical: true)
             case .system(let system):
                 ScrollView(.horizontal) { TabStaff(system: system, size: size) }
                     .accessibilityElement(children: .ignore)
@@ -55,7 +59,7 @@ private struct TabStaff: View {
 
     var body: some View {
         let col = UIFont.monospacedSystemFont(ofSize: size, weight: .regular).monoAdvance
-        let row = size * 1.4
+        let row = 18.0 * size / 13
         let pad = row * 0.7
         let gutter = col * Double(max(system.strings.map(\.label.count).max() ?? 0, 1)) + col * 1.5
         let width = gutter + Double(system.cols) * col + col
@@ -68,22 +72,22 @@ private struct TabStaff: View {
                 var from = start
                 for e in string.events {
                     let x = gutter + Double(e.col) * col
-                    stroke(&context, from: CGPoint(x: from, y: y(r)), to: CGPoint(x: x - 1, y: y(r)), style: Color.secondary.opacity(0.5))
+                    stroke(&context, from: CGPoint(x: from, y: y(r)), to: CGPoint(x: x - 1, y: y(r)), style: k7.text.opacity(0.3))
                     from = x + Double(e.text.utf16.count) * col + 1
                 }
-                stroke(&context, from: CGPoint(x: from, y: y(r)), to: CGPoint(x: end, y: y(r)), style: Color.secondary.opacity(0.5))
-                context.draw(Text(string.label).font(.system(size: size, weight: .bold, design: .monospaced)).foregroundStyle(Color.accentColor),
+                stroke(&context, from: CGPoint(x: from, y: y(r)), to: CGPoint(x: end, y: y(r)), style: k7.text.opacity(0.3))
+                context.draw(Text(string.label).font(.system(size: size, weight: .bold, design: .monospaced)).foregroundStyle(k7.accentIcon),
                              at: CGPoint(x: gutter - col * 0.6, y: y(r)), anchor: .trailing)
                 for e in string.events {
                     let glyph = e.kind == .fret
-                        ? Text(e.text).font(.system(size: size, weight: .semibold, design: .monospaced)).foregroundStyle(.primary)
-                        : Text(e.text).font(.system(size: size, design: .monospaced)).foregroundStyle(.secondary)
+                        ? Text(e.text).font(.system(size: size, weight: .bold, design: .monospaced)).foregroundStyle(k7.text)
+                        : Text(e.text).font(.system(size: size, design: .monospaced)).foregroundStyle(k7.textSecondary)
                     context.draw(glyph, at: CGPoint(x: gutter + Double(e.col) * col, y: y(r)), anchor: .leading)
                 }
             }
             for b in system.bars {
                 let x = gutter + Double(b) * col + col / 2
-                stroke(&context, from: CGPoint(x: x, y: y(0)), to: CGPoint(x: x, y: y(system.strings.count - 1)), style: Color.secondary)
+                stroke(&context, from: CGPoint(x: x, y: y(0)), to: CGPoint(x: x, y: y(system.strings.count - 1)), style: k7.text.opacity(0.45))
             }
         }
         .frame(width: width, height: height)

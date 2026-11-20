@@ -1,6 +1,6 @@
 # k7-rec
 
-A native iPhone and Mac app (SwiftUI, iOS 17, Mac Catalyst) extracted from k7's rehearsal part: a song list with chords, lyrics,
+K7 REC, a native iPhone, iPad and Mac app (SwiftUI, iOS 26, Mac Catalyst) extracted from k7's rehearsal part: a song list with chords, lyrics,
 tabs and sheets, and a recorder with moments and markers. No account, no server of ours: songs and takes
 sync through the user's iCloud (`docs/sync.md`), on the iPhone and the Mac (`docs/mac.md`). Songs come from imported files (a song
 folder or an audio file), and an FTPS or SFTP server.
@@ -15,11 +15,12 @@ docs/       one page per zone: app, audio, stems, store, text, sync, server, mac
 ## Build
 
 ```
-cd App && xcodegen generate            # the .xcodeproj is generated and ignored
-xcodebuild -project Rehearsal.xcodeproj -scheme Rehearsal \
+cd App && ./fetch-model.sh            # the stem model, bundled in the app (docs/stems.md); once
+xcodegen generate                      # the .xcodeproj is generated and ignored
+xcodebuild -project K7Rec.xcodeproj -scheme K7Rec \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
 (cd Packages/RehearsalText && swift test)   # same for RehearsalAudio, RehearsalStems, RehearsalStore, RehearsalFTP and RehearsalSFTP
-xcodebuild -project Rehearsal.xcodeproj -scheme Rehearsal -destination 'platform=macOS,variant=Mac Catalyst' build
+xcodebuild -project K7Rec.xcodeproj -scheme K7Rec -destination 'platform=macOS,variant=Mac Catalyst' build
 ```
 
 Third-party code: GRDB and Yams (MIT), and the guitar chord data of `@tombatossals/chords-db`
