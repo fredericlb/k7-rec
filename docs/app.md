@@ -167,8 +167,10 @@ speaker is picked up by the microphone; headphones are not).
   once, and writes the line only when it changes, so the lists redraw on a line change and not on every frame. A tap on a timed
   line seeks `lyrics lead` seconds early (1 s, kept in UserDefaults, a Settings stepper) and starts playing,
   as the web does.
-- **Transposition is kept per song in UserDefaults**, folded into -5...+6. It moves what is read: the
-  chords and lyrics tabs and the diagrams; the files are never rewritten.
+- **Transposition is kept per song in UserDefaults**, folded into -5...+6. It moves what is read (the
+  chords and lyrics tabs and the diagrams; the files are never rewritten) and what is heard: the song, its
+  instrumental and its stems play pitch-shifted at the same tempo (`docs/audio.md`), a take as recorded. The fold
+  keeps the shift at half an octave at most, where the shifter sounds cleanest. A change is heard at once.
 - **Chords and tab are monospace, scrolled sideways, never wrapped**, since alignment is the data. The
   sideways scroll is nested in the vertical one: a two-axis `ScrollView` centres short content.
 - **Tab is drawn, not printed**: a system is a `Canvas` staff on the ASCII's column grid (one monospaced
@@ -186,8 +188,12 @@ speaker is picked up by the microphone; headphones are not).
 - **Sheets** are copied into `sheets/` under a unique name and ordered by `position`, which is the
   sidecar's order for imported ones; PDFs go through PDFKit, images through a zooming scroll view over a bounded
   decode (4096 px on the long side), made off the main actor, and MusicXML scores through Verovio (`docs/score.md`).
-- **Tags are edited on the row only.** The copy's `song.yaml` gets only the uuid; a re-import takes the
+- **Title, artist and tags are edited in the Info tab, on the row only**, saved as each is made (a field on
+  return or on leaving the tab, a tag chip at once); an emptied title keeps the one before. The copy's
+  `song.yaml` gets only the uuid, so a re-import reads title and artist from the source again; it takes the
   sidecar's tags when it has some and keeps the row's own otherwise.
+- **The Info tab is the settings cards**: the rows of `SettingsRows.swift`, shared with Settings, and tags as
+  chips that wrap, each with its remove button.
 - **LRC import** merges a picked `.lrc` into the lyrics with `LRC.merge`, writing `{{MM:SS.cc}}` codes as the web does.
 
 ## Chord diagrams

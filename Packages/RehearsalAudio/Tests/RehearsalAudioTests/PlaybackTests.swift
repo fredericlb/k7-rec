@@ -228,4 +228,22 @@ final class PlaybackTests: XCTestCase {
     let peak = UnsafeBufferPointer(start: buf.floatChannelData![0], count: Int(buf.frameLength)).map { abs($0) }.max()!
     XCTAssertEqual(peak, 0.64, accuracy: 0.03)
   }
+
+  func testAShiftOfTwelveSemitonesDoublesThePitchAndKeepsTheTempo() throws {
+    let url = try TestAudio.wav(seconds: 5, amp: 0.5, hz: 220)
+    let engine = AVAudioEngine()
+    try engine.enableManualRenderingMode(.offline, format: AVAudioFormat(standardFormatWithSampleRate: 8000, channels: 1)!, maximumFrameCount: 4096)
+    let p = try TakePlayer(url: url, engine: engine, coordinator: PlaybackCoordinator(), session: FakeSession())
+    p.semitones = 12
+    try p.play()
+    let buf = AVAudioPCMBuffer(pcmFormat: engine.manualRenderingFormat, frameCapacity: 4096)!
+    for _ in 0..<2 { XCTAssertEqual(try engine.renderOffline(4096, to: buf), .success) }
+    // The second block, past the shifter's start: rising zero crossings over half a second.
+    let x = UnsafeBufferPointer(start: buf.floatChannelData![0], count: 4000)
+    let rising = (1..<x.count).filter { x[$0 - 1] < 0 && x[$0] >= 0 }.count
+    XCTAssertEqual(Double(rising) / 0.5, 440, accuracy: 20)
+    let before = p.positionSec
+    for _ in 0..<4 { XCTAssertEqual(try engine.renderOffline(4096, to: buf), .success) }
+    XCTAssertEqual(p.positionSec - before, 4 * 4096.0 / 8000, accuracy: 0.01, "the playhead moves at the song's own speed")
+  }
 }

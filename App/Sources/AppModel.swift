@@ -140,7 +140,7 @@ final class AppModel {
         if listeningTo == highlight.id, player.isPlaying { player.toggle(); return }
         guard let heard = recorder.listen(to: highlight) else { notice = "That highlight cannot be played yet."; return }
         player.unload()
-        player.load(id: Self.liveID, url: heard.url)
+        load(Self.liveID, url: heard.url)
         player.setGain(heard.gain)
         player.setRange(heard.span, loops: true)
         player.seek(to: heard.span.lowerBound)
@@ -254,7 +254,7 @@ final class AppModel {
             prefs.setInstrumental(true, for: song.id)
         }
         guard loaded, let url = playURL(of: song) else { return }
-        player.load(id: playID(of: song), url: url)
+        load(playID(of: song), url: url)
         player.setRange(nil, loops: false)
         player.seek(to: position)
         if playing { player.toggle() }
@@ -262,14 +262,14 @@ final class AppModel {
 
     /// Plays or pauses `id`, loading `url` first when another file is loaded.
     func togglePlay(id: String, url: URL) {
-        player.load(id: id, url: url)
+        load(id, url: url)
         player.setRange(nil, loops: false)
         player.toggle()
     }
 
     /// Plays `span` of `id`, looped or once; a second tap on the span that plays pauses it.
     func playSpan(id: String, url: URL, span: ClosedRange<TimeInterval>, loops: Bool) {
-        player.load(id: id, url: url)
+        load(id, url: url)
         if player.isPlaying, player.range == span { player.toggle(); return }
         player.setRange(span, loops: loops)
         player.seek(to: span.lowerBound)
@@ -277,8 +277,27 @@ final class AppModel {
     }
 
     func seek(id: String, url: URL, to seconds: TimeInterval) {
-        player.load(id: id, url: url)
+        load(id, url: url)
         player.setRange(nil, loops: false)
         player.seek(to: seconds)
+    }
+
+    /// Sets a song's transposition; the song, if loaded, is heard at the new pitch at once.
+    func setTranspose(_ semitones: Int, of songID: String) {
+        prefs.setTranspose(semitones, of: songID)
+        if let id = player.loadedID, Self.songID(inPlayID: id) == songID { player.setPitch(prefs.transpose(of: songID)) }
+    }
+
+    /// Loads `id`, a song at its transposition (same tempo), anything else as recorded.
+    private func load(_ id: String, url: URL) {
+        player.load(id: id, url: url)
+        player.setPitch(Self.songID(inPlayID: id).map(prefs.transpose(of:)) ?? 0)
+    }
+
+    /// The song a play id stands for, nil for a take.
+    static func songID(inPlayID id: String) -> String? {
+        guard id.hasPrefix("song:") else { return nil }
+        let rest = id.dropFirst("song:".count)
+        return String(rest.hasSuffix(":instrumental") ? rest.dropLast(":instrumental".count) : rest)
     }
 }

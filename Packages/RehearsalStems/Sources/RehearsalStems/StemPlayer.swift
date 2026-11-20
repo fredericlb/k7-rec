@@ -1,4 +1,4 @@
-// StemPlayer.swift: plays the four stems together, each with its own gain, from one shared start.
+// StemPlayer.swift: plays the four stems together, each with its own gain, from one shared start, pitch-shifted as one.
 // What a reader gets wrong: every node starts at the same host time, so the stems stay in step; a seek or a
 // mix change while playing re-schedules from the frame the playhead stands on.
 
@@ -12,8 +12,12 @@ public final class StemPlayer: PlaybackYielding {
   public var onFinish: (() -> Void)?
   public var onPause: (() -> Void)?
   public var mix = StemMix() { didSet { applyMix() } }
+  /// The pitch shift in semitones, the tempo kept; one shifter after the stems' own mixer, bypassed at 0.
+  public var semitones = 0 { didSet { applyPitch() } }
 
   private let engine = AVAudioEngine()
+  private let stemsMixer = AVAudioMixerNode()
+  private let shifter = AVAudioUnitTimePitch()
   private var nodes: [Stem: AVAudioPlayerNode] = [:]
   private var files: [Stem: AVAudioFile] = [:]
   private let rate: Double
@@ -28,12 +32,16 @@ public final class StemPlayer: PlaybackYielding {
   public init(urls: [Stem: URL], coordinator: PlaybackCoordinator? = nil, session: SessionHost = SystemSession()) throws {
     self.coordinator = coordinator ?? .shared
     self.session = session
+    engine.attach(stemsMixer)
+    engine.attach(shifter)
+    engine.connect(stemsMixer, to: shifter, format: nil)
+    engine.connect(shifter, to: engine.mainMixerNode, format: nil)
     for stem in Stem.allCases {
       guard let url = urls[stem] else { throw StemError.unreadable }
       let file = try AVAudioFile(forReading: url)
       let node = AVAudioPlayerNode()
       engine.attach(node)
-      engine.connect(node, to: engine.mainMixerNode, format: file.processingFormat)
+      engine.connect(node, to: stemsMixer, format: file.processingFormat)
       (files[stem], nodes[stem]) = (file, node)
     }
     let first = files[.drums]!
@@ -41,6 +49,7 @@ public final class StemPlayer: PlaybackYielding {
     frames = Int(files.values.map(\.length).min() ?? 0)
     durationSec = Double(frames) / rate
     applyMix()
+    applyPitch()
     session.onInterruption = { [weak self] _ in MainActor.assumeIsolated { self?.pause() } }
     session.observe()
   }
@@ -120,6 +129,11 @@ public final class StemPlayer: PlaybackYielding {
     generation += 1
     for node in nodes.values { node.stop() }
     engine.pause()
+  }
+
+  private func applyPitch() {
+    shifter.pitch = Float(semitones * 100)
+    shifter.bypass = semitones == 0
   }
 
   private func applyMix() {

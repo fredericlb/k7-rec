@@ -7,6 +7,8 @@ import RehearsalStems
 final class StemSession {
     private(set) var isPlaying = false
     var mix = StemMix() { didSet { player.mix = mix } }
+    /// The song's transposition, heard as a pitch shift at the same tempo.
+    var semitones = 0 { didSet { player.semitones = semitones } }
     @ObservationIgnored private let player: StemPlayer
     @ObservationIgnored var onIdle: (() -> Void)?
 

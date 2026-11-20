@@ -106,6 +106,14 @@ of an `AVAudioUnitEQ` goes to +24 dB, so two in series reach +48 dB, past the re
 `PlaybackCoordinator`: starting one pauses the other. The metronome is not part of that rule, a
 click under a take is the point.
 
+## A transposed song is pitch-shifted, its tempo kept
+
+`TakePlayer` and `StemPlayer` put an `AVAudioUnitTimePitch` before the gain (after the stems' own mixer for
+the stems): Apple's phase-vocoder shifter, so no library is added, and it changes the pitch in cents with the
+rate left at 1. At 0 semitones it is bypassed, so a take or an untransposed song is heard untouched. The
+shifter reads ahead of what it outputs, so while it shifts the playhead runs about 50 ms early; the offline
+test checks the pitch (an octave doubles a tone) and that the playhead still moves at the file's own speed.
+
 ## The player meters what is heard
 
 A tap after the gain keeps the RMS of the last buffer (`TakePlayer.outputRMS`), so the level is what comes out,
@@ -131,4 +139,4 @@ The suite runs on the Mac with a fake input and an engine rendering offline. It 
 microphone permission flow, `.playAndRecord` routing (speaker, Bluetooth, headset), the real
 interruption and media-services-reset notifications, a CAF left by a killed process, the rate a
 headset really reports, `EngineInput` itself (its `audioStuck` mapping included), the beat callback's alignment with the click, the `dataPlayedBack` completion that ends a range at the speaker,
-and the audible click. Those need a phone.
+the audible click, and how a shifted song sounds (the shifter's smearing of transients). Those need a phone.

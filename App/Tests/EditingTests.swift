@@ -86,10 +86,14 @@ final class EditingTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: first.url.path))
     }
 
-    func testTagsAreKeptOnTheSongRow() async throws {
+    func testTitleArtistAndTagsAreKeptOnTheSongRowAndShownAtOnce() async throws {
         let (lib, store, _, _) = try await imported()
-        _ = await lib.setTags(["rock", "slow"], for: lib.songs[0])
+        _ = await lib.setInfo(title: "New title", artist: "New artist", tags: ["rock", "slow"], for: lib.songs[0])
         let rows = try await store.list(Query<RehearsalStore.Song>())
+        XCTAssertEqual(rows[0].title, "New title")
+        XCTAssertEqual(rows[0].artist, "New artist")
         XCTAssertEqual(rows[0].tags, ["rock", "slow"])
+        XCTAssertEqual(lib.songs[0].title, "New title")
+        XCTAssertEqual(lib.songs[0].tags, ["rock", "slow"])
     }
 }

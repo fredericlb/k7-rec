@@ -78,7 +78,7 @@ final class ImportTests: XCTestCase {
         try Data("pdf".utf8).write(to: sheet)
         _ = await lib.saveText(.lyrics, "la la", for: song)
         _ = await lib.addSheet(from: sheet, to: lib.songs[0])
-        _ = await lib.setTags(["x"], for: lib.songs[0])
+        _ = await lib.setInfo(title: lib.songs[0].title, artist: lib.songs[0].artist, tags: ["x"], for: lib.songs[0])
 
         let failure = await lib.importURLs([wav])
         await lib.refresh()

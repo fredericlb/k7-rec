@@ -53,7 +53,8 @@ protocol SongLibrary: AnyObject {
     func saveText(_ kind: TextKind, _ text: String, for song: Song) async -> String?
     func addSheet(from url: URL, to song: Song) async -> String?
     func removeSheet(_ sheet: SongSheet, from song: Song) async -> String?
-    func setTags(_ tags: [String], for song: Song) async -> String?
+    /// Writes the song's title, artist and tags; another device gets them through the records.
+    func setInfo(title: String, artist: String, tags: [String], for song: Song) async -> String?
     /// Reads the store again, so `songs` holds what an import just filed.
     func refresh() async
 }
@@ -101,8 +102,8 @@ final class FakeSongLibrary: SongLibrary {
         return nil
     }
 
-    func setTags(_ tags: [String], for song: Song) async -> String? {
-        edit(song) { $0.tags = tags }
+    func setInfo(title: String, artist: String, tags: [String], for song: Song) async -> String? {
+        edit(song) { ($0.title, $0.artist, $0.tags) = (title, artist, tags) }
         return nil
     }
 

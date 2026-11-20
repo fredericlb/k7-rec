@@ -1,4 +1,4 @@
-// TakePlayer.swift: plays a take, with seek, a range that may loop, and the take's playback gain.
+// TakePlayer.swift: plays a take, with seek, a range that may loop, the take's playback gain and a pitch shift.
 // What reads wrong: pause drops the schedule and play re-schedules from the frame it stood on.
 
 import AVFoundation
@@ -14,9 +14,12 @@ public final class TakePlayer: PlaybackYielding {
   /// Called whenever the player pauses, whoever asked: the caller, another player taking the floor, an interruption.
   public var onPause: (() -> Void)?
   public var gain: Double { didSet { applyGain() } }
+  /// The pitch shift in semitones, the tempo kept; 0 bypasses the shifter, so the sound is untouched.
+  public var semitones = 0 { didSet { applyPitch() } }
 
   private let engine: AVAudioEngine
   private let node = AVAudioPlayerNode()
+  private let shifter = AVAudioUnitTimePitch()
   private let eq = AVAudioUnitEQ(numberOfBands: 0)
   private let boost = AVAudioUnitEQ(numberOfBands: 0)
   private let file: AVAudioFile
@@ -49,12 +52,15 @@ public final class TakePlayer: PlaybackYielding {
     rangeEnd = Int(file.length)
     durationSec = Double(file.length) / rate
     engine.attach(node)
+    engine.attach(shifter)
     engine.attach(eq)
     engine.attach(boost)
-    engine.connect(node, to: eq, format: file.processingFormat)
+    engine.connect(node, to: shifter, format: file.processingFormat)
+    engine.connect(shifter, to: eq, format: file.processingFormat)
     engine.connect(eq, to: boost, format: file.processingFormat)
     engine.connect(boost, to: engine.mainMixerNode, format: file.processingFormat)
     applyGain()
+    applyPitch()
     boost.installTap(onBus: 0, bufferSize: 2048, format: nil, block: Self.metering(into: meter))
     session.onInterruption = { [weak self] _ in MainActor.assumeIsolated { self?.pause() } }
     session.observe()
@@ -201,6 +207,11 @@ public final class TakePlayer: PlaybackYielding {
     let (first, second) = Self.decibels(gain)
     eq.globalGain = first
     boost.globalGain = second
+  }
+
+  private func applyPitch() {
+    shifter.pitch = Float(semitones * 100)
+    shifter.bypass = semitones == 0
   }
 
   /// The decibels for two EQs in series, each accepting up to +24 dB: the first takes the cut and the first 24.

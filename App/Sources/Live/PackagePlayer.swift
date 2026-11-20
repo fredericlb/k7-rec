@@ -31,6 +31,8 @@ final class PackagePlayer: TakePlaying {
 
     func setGain(_ gain: Double) { player?.gain = gain }
 
+    func setPitch(_ semitones: Int) { player?.semitones = semitones }
+
     func setRange(_ range: ClosedRange<TimeInterval>?, loops: Bool) {
         guard range != nil || self.range != nil else { return }
         player?.setRange(range, loops: loops)

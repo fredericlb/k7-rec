@@ -1,4 +1,4 @@
-// Writes to a song's folder and its rows: texts, sheets and tags, the file first and the rows in one transaction.
+// Writes to a song's folder and its rows: texts, sheets, title, artist and tags, the file first and the rows in one transaction.
 // What a reader gets wrong: an emptied text removes its file and row, so the Info of a song can shrink to nothing.
 import Foundation
 import RehearsalStore
@@ -67,14 +67,15 @@ extension StoreSongLibrary {
         } catch { return error.localizedDescription }
     }
 
-    func setTags(_ tags: [String], for song: Song) async -> String? {
+    func setInfo(title: String, artist: String, tags: [String], for song: Song) async -> String? {
         let songID = song.id
         do {
             try await store.write { tx in
                 guard var row = try tx.get(RehearsalStore.Song.self, songID) else { return }
-                row.tags = tags
+                (row.title, row.artist, row.tags) = (title, artist, tags)
                 try tx.put(row)
             }
+            await refresh()
             return nil
         } catch { return error.localizedDescription }
     }

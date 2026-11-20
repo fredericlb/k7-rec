@@ -15,6 +15,8 @@ protocol TakePlaying: AnyObject {
     func toggle()
     /// The loaded file's playback gain, 1 for a levelled take.
     func setGain(_ gain: Double)
+    /// The loaded file's pitch shift in semitones, the tempo kept; 0 plays it as recorded.
+    func setPitch(_ semitones: Int)
     func seek(to seconds: TimeInterval)
     func unload()
     /// Called when playback stops by itself or by a pause: nothing of the player is audible any more.
@@ -42,6 +44,8 @@ final class FakeTakePlayer: TakePlaying {
     }
 
     func setGain(_ gain: Double) {}
+    private(set) var semitones = 0
+    func setPitch(_ semitones: Int) { self.semitones = semitones }
     func toggle() { isPlaying.toggle(); if !isPlaying { onIdle?() } }
     func seek(to seconds: TimeInterval) { position = seconds }
     func unload() { loadedID = nil; isPlaying = false }

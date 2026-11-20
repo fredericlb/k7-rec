@@ -88,6 +88,7 @@ struct StemsSheet: View {
     private func open() {
         guard session == nil, let urls = model.stems.existing(for: song) else { return }
         session = try? StemSession(urls: urls)
+        session?.semitones = model.prefs.transpose(of: song.id)
         session?.onIdle = { model.restSession() }
     }
 
