@@ -42,6 +42,12 @@ final class StoreSongLibrary: SongLibrary {
 
     func wave(of song: Song) async -> Wave {
         guard let url = song.audioURL else { return Wave(samples: [], duration: 0) }
+        // A file still in iCloud is asked for now; its arrival reads it again (SyncDriver.deliveries).
+        if let v = try? url.resourceValues(forKeys: [.isUbiquitousItemKey, .ubiquitousItemDownloadingStatusKey]),
+           v.isUbiquitousItem == true, v.ubiquitousItemDownloadingStatus != .current {
+            try? FileManager.default.startDownloadingUbiquitousItem(at: url)
+            return Wave(samples: [], duration: 0)
+        }
         let date = (try? FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate] as? Date) ?? .distantPast
         let modified = Int(date.timeIntervalSince1970 * 1000)
         if let hit = waves[song.id], hit.modified == modified { return hit.wave }

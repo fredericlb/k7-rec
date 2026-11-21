@@ -161,7 +161,10 @@ struct LibrarySync: @unchecked Sendable {
                 deleted.insert(String(name.dropLast(Self.tombstone.count)))
             } else if name.hasSuffix(".json"), let data = try? Data(contentsOf: records.appendingPathComponent(name)) {
                 files[name] = data
-            } else if name.hasSuffix(".json") { pending.insert(name) }
+            } else if name.hasSuffix(".json") {
+                pending.insert(name)
+                try? fm.startDownloadingUbiquitousItem(at: records.appendingPathComponent(name))
+            }
         }
         return (files, pending, deleted)
     }

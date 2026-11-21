@@ -165,4 +165,11 @@ final class LibrarySyncTests: XCTestCase {
         let files = try await b.list(Query<SongFile>())
         XCTAssertEqual(files.count, 2)
     }
+
+    func testAnOldStylePlaceholderNamesTheFileItStandsFor() {
+        let dir = URL(fileURLWithPath: "/c/Songs/Blue")
+        XCTAssertEqual(SyncDriver.placeholderTarget(dir.appendingPathComponent(".original.mp3.icloud")), dir.appendingPathComponent("original.mp3"))
+        XCTAssertNil(SyncDriver.placeholderTarget(dir.appendingPathComponent("original.mp3")))
+        XCTAssertNil(SyncDriver.placeholderTarget(dir.appendingPathComponent(".icloud")))
+    }
 }

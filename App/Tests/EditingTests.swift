@@ -96,4 +96,21 @@ final class EditingTests: XCTestCase {
         XCTAssertEqual(lib.songs[0].title, "New title")
         XCTAssertEqual(lib.songs[0].tags, ["rock", "slow"])
     }
+
+    func testARenamedSongKeepsItsAudio() async throws {
+        let root = try tempFolder()
+        let store = try Store()
+        let lib = StoreSongLibrary(store: store, songsFolder: root.appendingPathComponent("Songs"))
+        let wav = root.appendingPathComponent("Blue.wav")
+        try makeWav(at: wav, seconds: 1, amp: 0.5)
+        let failure = await lib.importURLs([wav])
+        XCTAssertNil(failure)
+        await lib.refresh()
+        let before = try XCTUnwrap(lib.songs.first?.audioURL)
+        _ = await lib.setInfo(title: "Green", artist: "Someone", tags: [], for: lib.songs[0])
+        for _ in 0..<20 { try? await Task.sleep(nanoseconds: 20_000_000) }
+        XCTAssertEqual(lib.songs[0].title, "Green")
+        XCTAssertEqual(lib.songs[0].audioURL, before)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: before.path))
+    }
 }

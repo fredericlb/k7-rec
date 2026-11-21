@@ -20,11 +20,14 @@ Songs and takes follow the user's iCloud account; the database does not.
   missing are rebuilt from the file. A deletion is something the user did: deleting a take writes
   `take-<id>.json.deleted`, removes the record, and any device that reads that tombstone drops the rows. A bug,
   a late download or a reinstall can therefore lose nothing that the records still hold.
-- **A file still in iCloud is left out of the pass.** A `.name.icloud` placeholder keeps its record out of it
-  and asks for a download. A library that fell back to memory is never mirrored, and a pass that cannot read
+- **A file still in iCloud is left out of the pass.** A record that cannot be read yet (a dataless file, or a
+  `.name.icloud` placeholder on older systems) keeps out of it and is asked for. A library that fell back to memory is never mirrored, and a pass that cannot read
   the rows changes nothing.
-- **Media is asked for, not fetched on demand.** Placeholders under `Songs/` and `Takes/` are downloaded on
-  every pass, so a take plays when it is tapped.
+- **Media is asked for on every pass, not fetched on demand.** Any file under `Songs/` and `Takes/` whose
+  downloading status is not current is asked for, so a song imported on another device plays here. The status
+  is read, not the name: iCloud keeps a file that is not downloaded under its own name, dataless, and a walk
+  that looks only for `.name.icloud` placeholders never asks for it. A song shown before its audio arrives
+  reads it again when iCloud reports a delivery.
 - **A raw take in progress is in the Takes folder too**, and so is uploaded while it grows; it is removed once
   the take is saved. Recording into a local scratch folder would avoid the upload.
 - **A first launch with the container moves** the local `Songs/` and `Takes/` into it, item by item; a name

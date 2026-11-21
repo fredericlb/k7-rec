@@ -86,8 +86,9 @@ struct SongScreen: View {
             if let at = DebugLaunch.seek, let url = model.playURL(of: live) { model.seek(id: playID, url: url, to: at); refreshActive() }
             menuOpen = DebugLaunch.menu
             hasStems = model.stems.existing(for: live) != nil
-            wave = await model.library.wave(of: live)
         }
+        // Read again when iCloud delivers a file: a song added on another device may arrive while it is shown.
+        .task(id: model.sync?.deliveries) { if wave.samples.isEmpty { wave = await model.library.wave(of: live) } }
         .task(id: "\(playing)-\(current.rawValue)") { await follow() }
         .onAppear { model.shownSong = live }
         .onDisappear { if model.shownSong?.id == live.id { model.shownSong = nil } }

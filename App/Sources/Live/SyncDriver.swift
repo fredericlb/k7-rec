@@ -11,6 +11,8 @@ final class SyncDriver {
     private(set) var report: SyncReport?
     private(set) var lastRun: Date?
     private(set) var running = false
+    /// Counts what iCloud delivered or changed in the container, so a screen showing a file reads it again.
+    private(set) var deliveries = 0
     @ObservationIgnored private let sync: LibrarySync
     @ObservationIgnored private let roots: [URL]
     @ObservationIgnored private var tasks: [Task<Void, Never>] = []
@@ -61,29 +63,39 @@ final class SyncDriver {
         })
     }
 
-    /// iCloud delivering or changing a file asks for a pass.
+    /// iCloud delivering or changing a file, a record or a song's audio, asks for a pass.
     private func listen() {
         let q = NSMetadataQuery()
         q.searchScopes = [NSMetadataQueryUbiquitousDocumentsScope]
-        q.predicate = NSPredicate(format: "%K LIKE '*.json'", NSMetadataItemFSNameKey)
+        q.predicate = NSPredicate(format: "%K LIKE '*'", NSMetadataItemFSNameKey)
         for name in [Notification.Name.NSMetadataQueryDidFinishGathering, .NSMetadataQueryDidUpdate] {
             tokens.append(NotificationCenter.default.addObserver(forName: name, object: q, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.schedule() }
+                MainActor.assumeIsolated { self?.deliveries += 1; self?.schedule() }
             })
         }
         q.start()
         query = q
     }
 
-    /// Every file still only in iCloud is asked for, so a take plays when it is tapped.
+    /// Every file still only in iCloud is asked for, so a song or a take plays when it is tapped (docs/sync.md).
     nonisolated static func download(_ roots: [URL]) {
         let fm = FileManager.default
+        let keys: Set<URLResourceKey> = [.isUbiquitousItemKey, .ubiquitousItemDownloadingStatusKey]
         for root in roots {
-            guard let walk = fm.enumerator(at: root, includingPropertiesForKeys: nil) else { continue }
-            for case let url as URL in walk where url.lastPathComponent.hasPrefix(".") && url.pathExtension == "icloud" {
-                let real = url.deletingLastPathComponent().appendingPathComponent(String(url.lastPathComponent.dropFirst().dropLast(".icloud".count)))
-                try? fm.startDownloadingUbiquitousItem(at: real)
+            guard let walk = fm.enumerator(at: root, includingPropertiesForKeys: Array(keys)) else { continue }
+            for case let url as URL in walk {
+                if let real = placeholderTarget(url) { try? fm.startDownloadingUbiquitousItem(at: real); continue }
+                guard let v = try? url.resourceValues(forKeys: keys), v.isUbiquitousItem == true,
+                      v.ubiquitousItemDownloadingStatus != .current else { continue }
+                try? fm.startDownloadingUbiquitousItem(at: url)
             }
         }
+    }
+
+    /// The file a `.name.icloud` placeholder stands for, nil for any other name.
+    nonisolated static func placeholderTarget(_ url: URL) -> URL? {
+        let name = url.lastPathComponent
+        guard name.hasPrefix("."), url.pathExtension == "icloud", name.count > ".icloud".count + 1 else { return nil }
+        return url.deletingLastPathComponent().appendingPathComponent(String(name.dropFirst().dropLast(".icloud".count)))
     }
 }
