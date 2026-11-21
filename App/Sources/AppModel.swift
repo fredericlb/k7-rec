@@ -32,6 +32,8 @@ final class AppModel {
     }
     /// The take just stopped, for the Takes tab to open; the tab clears it once shown.
     var stoppedTake: String?
+    /// A song another app just handed over (the share sheet, Open in), for the Songs tab to open; cleared once shown.
+    var sharedSong: String?
     private(set) var lyricsBusy = false
     /// True while the instrumental is being mixed from the stems.
     private(set) var mixing = false
@@ -166,6 +168,23 @@ final class AppModel {
         let known = Set(library.songs.map(\.id))
         if let failure = await library.importURLs(urls) { notice = failure }
         await fetchLyricsForNewSongs(besides: known)
+    }
+
+    /// An audio file another app shared with K7 REC: imported as a picked file, then opened (docs/app.md).
+    func openShared(_ url: URL) async {
+        guard url.isFileURL else { return }
+        await library.refresh()
+        let known = Set(library.songs.map(\.id))
+        await importURLs([url])
+        Self.dropInboxCopy(url)
+        sharedSong = library.songs.first { !known.contains($0.id) }?.id
+    }
+
+    /// iOS copies a file it cannot open in place into Documents/Inbox; once imported, that copy goes.
+    static func dropInboxCopy(_ url: URL, documents: URL? = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first) {
+        guard let documents else { return }
+        let inbox = documents.appendingPathComponent("Inbox", isDirectory: true).standardizedFileURL.path + "/"
+        if url.standardizedFileURL.path.hasPrefix(inbox) { try? FileManager.default.removeItem(at: url) }
     }
 
     /// Downloads the picked files of the user's server and imports them as any picked audio; false when a download failed.

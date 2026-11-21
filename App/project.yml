@@ -81,6 +81,12 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         UIBackgroundModes: [audio]
         UIFileSharingEnabled: true
+        # An audio file shared from another app (the share sheet, Open in) becomes a song (docs/app.md).
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Audio
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [public.audio]
         LSSupportsOpeningDocumentsInPlace: true
         NSLocalNetworkUsageDescription: K7 REC connects to your file server to import audio files.
         NSMicrophoneUsageDescription: K7 REC records your takes with the microphone.

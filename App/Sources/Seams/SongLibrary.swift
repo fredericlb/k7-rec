@@ -76,6 +76,9 @@ final class FakeSongLibrary: SongLibrary {
 
     func importURLs(_ urls: [URL]) async -> String? {
         imported += urls
+        for url in urls {
+            songs.insert(Song(id: "imported-\(imported.count)-\(url.lastPathComponent)", title: url.deletingPathExtension().lastPathComponent, artist: ""), at: 0)
+        }
         return nil
     }
 

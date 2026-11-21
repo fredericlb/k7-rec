@@ -12,6 +12,7 @@ struct K7RecApp: App {
                 .onChange(of: phase) { _, now in if now == .active { model.sync?.schedule() } }
                 .task { await model.recoverTakes() }
                 .task { await importFromLaunchArguments() }
+                .onOpenURL { url in Task { await model.openShared(url) } }
         }
         .commands {
             CommandMenu("Recording") {

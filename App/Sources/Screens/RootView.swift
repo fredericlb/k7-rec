@@ -43,6 +43,12 @@ struct RootView: View {
             withAnimation(.bouncy(duration: 0.5, extraBounce: 0.15)) { tab = .takes }
             model.songsInFront = false
         }
+        .onChange(of: model.sharedSong) { _, id in
+            // A song shared from another app opens on its page: the Songs tab comes forward, which pushes it.
+            guard id != nil, tab != .songs else { return }
+            withAnimation(.bouncy(duration: 0.5, extraBounce: 0.15)) { tab = .songs }
+            model.songsInFront = true
+        }
         .sheet(isPresented: Bindable(model).recorderOpen) { RecordingScreen() }
         .alert("K7 REC", isPresented: Binding(get: { model.notice != nil }, set: { if !$0 { model.notice = nil } })) {
             Button("OK") {}

@@ -37,6 +37,11 @@ struct SongsScreen: View {
             .k7Header("Songs", subtitle: count(model.library.songs.count, "song"))
             .onChange(of: model.library.songs.count) { if DebugLaunch.openFirst, path.isEmpty, let s = model.library.songs.first { path = [s] } }
             .navigationDestination(for: Song.self) { SongScreen(song: $0) }
+            .onChange(of: model.sharedSong, initial: true) { _, id in
+                guard let id, let song = model.library.songs.first(where: { $0.id == id }) else { return }
+                path = [song]
+                model.sharedSong = nil
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {

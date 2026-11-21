@@ -69,7 +69,7 @@ Nothing here needs a phone to build, but these cannot be checked on the simulato
 microphone permission prompt and a real `EngineInput` take, routing to speaker or Bluetooth, an
 interruption by a call, the system file picker's security-scoped URLs from iCloud, what is audible, the
 metronome click through a speaker or Bluetooth, and a take recorded while a song plays (the
-speaker is picked up by the microphone; headphones are not).
+speaker is picked up by the microphone; headphones are not), and K7 REC in an audio file's share sheet.
 
 ## Look
 
@@ -144,6 +144,12 @@ speaker is picked up by the microphone; headphones are not).
   whatever its label asks for, and the bar adds about 14 pt to its label's width, so play and the menu ask
   for 30 pt to be 44 pt wide; on iPhone the title is capped at 170 pt so the actions are never pushed into the
   bar's overflow.
+- **Another app can feed the import**: the app declares `public.audio` as a document type it views, at the
+  Alternate rank (it never becomes the default player), so iOS lists K7 REC in an audio file's share sheet and
+  Open in, and the Mac in Finder's Open With. The URL goes through the same import as a picked file and the new
+  song opens on its page. A file iOS could not open in place arrives as a copy in `Documents/Inbox`, which is
+  removed once imported. No share extension: it would run apart from the app's store and its iCloud container;
+  the Mac's Share menu, which lists only extensions, does not offer K7 REC.
 - **A file server can feed the import**: Settings connects one FTPS or SFTP server (`docs/server.md`), and Songs' + menu then
   offers it. The import sheet browses folders and ticks audio files; they are downloaded and imported as picked files.
   "Missing song" in the same menu asks for an artist and a title and adds them to `MISSING-SONGS.md` on the server.
