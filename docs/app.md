@@ -194,6 +194,8 @@ speaker is picked up by the microphone; headphones are not), and K7 REC in an au
 - **Sheets** are copied into `sheets/` under a unique name and ordered by `position`, which is the
   sidecar's order for imported ones; PDFs go through PDFKit, images through a zooming scroll view over a bounded
   decode (4096 px on the long side), made off the main actor, and MusicXML scores through Verovio (`docs/score.md`).
+  The picked sheet goes full screen from the expand button at the top right of the tab, a full-screen cover
+  with one button that shrinks it back, so a sheet is read without the song screen's header and switch.
 - **Title, artist and tags are edited in the Info tab, on the row only**, saved as each is made (a field on
   return or on leaving the tab, a tag chip at once); an emptied title keeps the one before. The copy's
   `song.yaml` gets only the uuid, so a re-import reads title and artist from the source again; it takes the

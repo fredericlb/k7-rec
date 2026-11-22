@@ -1,4 +1,5 @@
-// The sheets tab: the song's sheets as chips in the sidecar's order, the picked one shown zoomable, add and remove.
+// The sheets tab: the song's sheets as chips in the sidecar's order, the picked one shown zoomable, add and remove;
+// the expand button shows the picked sheet full screen.
 import PDFKit
 import SwiftUI
 
@@ -7,21 +8,18 @@ struct SheetsTab: View {
     let song: Song
     @State private var pickedID: String?
     @State private var confirmRemove = false
+    @State private var fullScreen = false
     private var picked: SongSheet? { song.sheets.first { $0.id == pickedID } ?? song.sheets.first }
 
     var body: some View {
         VStack(spacing: 0) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack {
-                    ForEach(song.sheets) { sheet in
-                        Button(sheet.name) { pickedID = sheet.id }
-                            .buttonStyle(.bordered).tint(sheet.id == picked?.id ? .accentColor : .secondary)
-                    }
-                    if picked != nil {
-                        Button("Remove", systemImage: "trash", role: .destructive) { confirmRemove = true }.buttonStyle(.borderless)
-                    }
+            HStack(spacing: 0) {
+                chips
+                if picked != nil {
+                    Button { fullScreen = true } label: { Image(systemName: "arrow.up.left.and.arrow.down.right").target() }
+                        .buttonStyle(.borderless).padding(.trailing)
+                        .accessibilityLabel("Full screen").accessibilityIdentifier("sheetFullScreen")
                 }
-                .padding(.horizontal).padding(.vertical, 6)
             }
             Divider()
             if let sheet = picked {
@@ -30,11 +28,44 @@ struct SheetsTab: View {
                 ContentUnavailableView("No sheets", systemImage: "doc", description: Text("Add one from the song menu."))
             }
         }
+        .fullScreenCover(isPresented: $fullScreen) {
+            if let sheet = picked { FullScreenSheet(sheet: sheet) { fullScreen = false } }
+        }
         .confirmationDialog("Remove this sheet?", isPresented: $confirmRemove, titleVisibility: .visible) {
             Button("Remove", role: .destructive) {
                 if let sheet = picked { Task { if let failure = await model.library.removeSheet(sheet, from: song) { model.notice = failure } } }
             }
         }
+    }
+
+    private var chips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack {
+                ForEach(song.sheets) { sheet in
+                    Button(sheet.name) { pickedID = sheet.id }
+                        .buttonStyle(.bordered).tint(sheet.id == picked?.id ? .accentColor : .secondary)
+                }
+                if picked != nil {
+                    Button("Remove", systemImage: "trash", role: .destructive) { confirmRemove = true }.buttonStyle(.borderless)
+                }
+            }
+            .padding(.horizontal).padding(.vertical, 6)
+        }
+    }
+}
+
+/// One sheet over the whole screen, with a button that shrinks it back.
+private struct FullScreenSheet: View {
+    let sheet: SongSheet
+    let close: () -> Void
+
+    var body: some View {
+        SheetViewer(url: sheet.url).id(sheet.id).ignoresSafeArea(edges: .bottom)
+            .overlay(alignment: .topTrailing) {
+                Button(action: close) { Image(systemName: "arrow.down.right.and.arrow.up.left").target() }
+                    .buttonStyle(.glass).padding()
+                    .accessibilityLabel("Exit full screen").accessibilityIdentifier("sheetExitFullScreen")
+            }
     }
 }
 
