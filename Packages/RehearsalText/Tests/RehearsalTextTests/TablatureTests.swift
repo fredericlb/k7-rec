@@ -130,4 +130,53 @@ func systems(_ nodes: [TabNode]) -> [TabSystem] {
         let s = firstSystem(Tablature.parse("G|-0-2-0h2-|"))
         #expect(s?.strings[0].events.contains { $0.kind == .technique && $0.text == "h" } == true)
     }
+
+    static let sideBySide = [
+        "e -------------------------------       e ----------------------------|",
+        "b -------------------------------       b ---------0------------------|",
+        "f#----------------3-----------3--       f#---------0---0--------------|",
+        "d --------0--(0)--------0--(0)---       d -------4---4----------4-----|",
+        "a ----4h5---5-------4h5---5-----0       a -2---2----------0h2-2---0---|",
+        "D -0-----------------------------  x2   D --------------------------4-|  let ring",
+        "Then the verse",
+        "e ------------------------------|",
+        "b ------------------------------|",
+    ].joined(separator: "\n")
+
+    @Test func splitsSystemsWrittenSideBySideIntoOneAfterTheOther() {
+        let all = systems(Tablature.parse(Self.sideBySide))
+        #expect(all.count == 3)
+        let labels = ["e", "b", "f#", "d", "a", "D"]
+        #expect(all[0].strings.map(\.label) == labels)
+        #expect(all[1].strings.map(\.label) == labels)
+        let firstFret = all[1].strings[1].events.first
+        #expect(firstFret?.col == 9, "the second system's columns start at its own label")
+    }
+
+    @Test func wordsAfterAPieceStayOnItsStringEvenBetweenTwoSystems() {
+        let all = systems(Tablature.parse(Self.sideBySide))
+        #expect(all[0].comments == ["", "", "", "", "", "x2"])
+        #expect(all[1].comments == ["", "", "", "", "", "let ring"])
+        #expect(all[2].comments == ["", ""])
+    }
+
+    @Test func textBetweenTwoSystemsIsKept() {
+        let nodes = Tablature.parse(Self.sideBySide)
+        #expect(nodes.contains(.text("Then the verse")))
+    }
+
+    @Test func aChordLineIsNotTab() {
+        #expect(Tablature.row("C   G   Am   F") == nil)
+        #expect(Tablature.row("Bridge") == nil)
+    }
+
+    @Test func repeatSignsAreTabNotWords() {
+        let all = systems(Tablature.parse([
+            "e ------------------------------::----------------::",
+            "D -7---------------7------------::-7--------------:: (bits within the dots x2)",
+        ].joined(separator: "\n")))
+        #expect(all.count == 1)
+        #expect(all[0].comments == ["", "(bits within the dots x2)"])
+        #expect(all[0].cols == 50, "the repeat signs are inside the system, not its comment")
+    }
 }

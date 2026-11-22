@@ -107,4 +107,35 @@ final class SongTextTests: XCTestCase {
         _ = memo.get("Am G", 2, parse: parse)
         XCTAssertEqual(memo.parses, 3)
     }
+
+    func testAChordLineIsCutIntoChordsAndWhatLiesBetweenWithNothingLost() {
+        let line = "Am   F/C  (x2) G"
+        let runs = SongText.chordRuns(line)
+        XCTAssertEqual(runs.map(\.text).joined(), line)
+        XCTAssertEqual(runs.filter(\.chord).map(\.text), ["Am", "F/C", "G"])
+        XCTAssertEqual(runs.first { !$0.chord }?.text, "   ")
+        XCTAssertEqual(runs[3].text, "  (x2) ", "a word that is no chord joins the gap around it")
+    }
+
+    func testTabsWithContentComeFirstThenTheEmptyOnes() {
+        let song = Song(id: "s", title: "S", artist: "", hasChords: false, hasLyrics: true, hasTab: true, hasSheets: false)
+        XCTAssertEqual(SongTabs.ordered(song), [.lyrics, .tab, .chords, .sheets])
+        XCTAssertEqual(SongTabs.opening(song), .lyrics)
+    }
+
+    func testSystemsWithOnlyBlankLinesBetweenAreGroupedAndTextKeepsThemApart() {
+        let tab = [
+            "e|--0--|", "B|--1--|", "", "e|--2--|", "B|--3--|", "", "Then the verse", "e|--4--|", "B|--5--|", "",
+        ].joined(separator: "\n")
+        let blocks = SongText.tabBlocks(Tablature.parse(tab))
+        let shape = blocks.map { b -> String in
+            switch b {
+            case .systems(let g): "systems \(g.count)"
+            case .node(.text(let t)): t
+            case .node(.empty): "blank"
+            case .node: "other"
+            }
+        }
+        XCTAssertEqual(shape, ["systems 2", "blank", "Then the verse", "systems 1", "blank"])
+    }
 }

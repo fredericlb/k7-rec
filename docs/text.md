@@ -44,6 +44,14 @@ by the other. A code is stripped, with its one space, before a line is read.
 
 ## Departures from the TS
 
+- **A tab line is read as pieces, not tested whole.** A piece is an optional string label (`e`, `f#`, `D`) and a
+  body of dashes, frets, bars and techniques; whitespace ends a body. Tabs are often written two systems to a
+  line (`e ----0----     e ----2----|`) with words after a string (`x2`, `let ring`), and a whole-line test then
+  reads the line as prose. Pieces side by side come out as systems one after the other, left first, each on its
+  own column grid; the words after a piece, up to the next piece, are that string's comment
+  (`TabSystem.comments`), so `x2` between two systems stays on the string it was written on. A line that does
+  not start with a piece is text, kept where it stands between systems. `:` belongs to a body, so repeat signs (`::`) are
+  drawn in the system rather than read as its comment.
 
 - A time that is not finite formats as zero: the TS returns garbage there, Swift's `Int` would trap.
 - Maps are ordered arrays (`[LineTime]`), since the order of a `Map` is part of what `lineAt` returns.

@@ -1,4 +1,4 @@
-// The ⋮ popover: the date, on iPhone Info and the instrumental switch, then the buttons that add texts and sheets,
+// The ⋮ popover: the date, on iPhone Info and the instrumental switch, then the buttons that edit the texts,
 // fetch lyrics and split stems.
 // What a reader gets wrong: it is a popover on the iPhone, so a control is used in place; the Mac lists the same actions in a Menu.
 import SwiftUI
@@ -6,7 +6,6 @@ import SwiftUI
 struct SongMenu: View {
     let song: Song
     let edit: (TextKind) -> Void
-    let addSheet: () -> Void
     let importLRC: () -> Void
     let downloadLyrics: () -> Void
     let stems: () -> Void
@@ -25,7 +24,7 @@ struct SongMenu: View {
                     .accessibilityIdentifier("versionSwitch")
             }
             if info != nil || instrumental != nil { Divider() }
-            SongActions(song: song, edit: edit, addSheet: addSheet, importLRC: importLRC, downloadLyrics: downloadLyrics, stems: stems)
+            SongActions(song: song, edit: edit, importLRC: importLRC, downloadLyrics: downloadLyrics, stems: stems)
         }
         .tint(k7.text)
         .padding()
@@ -39,20 +38,19 @@ struct SongActions: View {
     @Environment(AppModel.self) private var model
     let song: Song
     let edit: (TextKind) -> Void
-    let addSheet: () -> Void
     let importLRC: () -> Void
     let downloadLyrics: () -> Void
     let stems: () -> Void
 
     var body: some View {
         Group {
-            ForEach(TextKind.allCases) { kind in
-                Button(has(kind) ? "Edit \(kind.title.lowercased())" : "Add \(kind.title.lowercased())", systemImage: "text.alignleft") { edit(kind) }
+            // Adding a missing text or a sheet is the tab switch's (its + tabs) and the Sheets tab's; only edits are here.
+            ForEach(TextKind.allCases.filter(has)) { kind in
+                Button("Edit \(kind.title.lowercased())", systemImage: "text.alignleft") { edit(kind) }
             }
             Button("Import timing from an LRC file", systemImage: "clock") { importLRC() }.disabled(!song.hasLyrics)
             Button(song.hasLyrics ? "Download timing from LRCLIB" : "Download lyrics from LRCLIB", systemImage: "arrow.down.circle") { downloadLyrics() }
                 .disabled(model.lyricsBusy)
-            Button("Add a sheet", systemImage: "doc.badge.plus") { addSheet() }
             Button("Separate into stems", systemImage: "waveform.path") { stems() }.disabled(song.audioURL == nil)
         }
     }

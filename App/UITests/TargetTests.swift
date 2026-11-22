@@ -37,6 +37,15 @@ final class TargetTests: XCTestCase {
         for name in ["Transpose down", "Transpose up"] { assertTarget(app.buttons[name].firstMatch, name) }
     }
 
+    func testAnEmptyTabIsShownWithAPlusAndAsksForItsContent() throws {
+        let app = try launch()
+        let add = app.buttons["Add tab"].firstMatch
+        assertTarget(add, "Add tab")
+        add.tap()
+        XCTAssertTrue(app.navigationBars["Tab"].waitForExistence(timeout: 5), "the tab editor opens")
+        XCTAssertTrue(app.buttons["Cancel"].firstMatch.exists)
+    }
+
     func testTheRecButtonAndTakePanelAreTargetsWithNames() throws {
         addUIInterruptionMonitor(withDescription: "microphone") { alert in
             for label in ["Allow", "OK"] where alert.buttons[label].exists { alert.buttons[label].tap(); return true }

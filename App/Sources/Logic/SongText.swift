@@ -31,6 +31,26 @@ enum SongText {
     }
 
     /// Every chord the song uses, moved, each once: the chords text first, then the lyrics' inline ones.
+    /// A chord line cut into runs, each either a chord or what lies between (spaces, a repeat mark), so a chord can
+    /// be tapped while the columns stay where the monospace puts them.
+    static func chordRuns(_ line: String) -> [(text: String, chord: Bool)] {
+        var out: [(text: String, chord: Bool)] = []
+        var current = "", inWord = false
+        func flush() {
+            guard !current.isEmpty else { return }
+            let isChord = inWord && Chord.isChord(current)
+            if !isChord, let last = out.last, !last.chord { out[out.count - 1].text += current } else { out.append((current, isChord)) }
+            current = ""
+        }
+        for ch in line {
+            let word = !ch.isWhitespace
+            if word != inWord { flush(); inWord = word }
+            current.append(ch)
+        }
+        flush()
+        return out
+    }
+
     static func diagramChords(chords: String, lyrics: String, semitones: Int) -> [String] {
         var seen = Set<String>()
         var out: [String] = []
@@ -49,10 +69,36 @@ enum SongText {
         return worded ? (header, Array(nodes[first...])) : ([], nodes)
     }
 
+    /// The tab's nodes with the systems that have no text between them gathered, blank lines between them dropped:
+    /// such a group may stand side by side; a line of text or a section keeps the systems around it apart.
+    static func tabBlocks(_ nodes: [TabNode]) -> [TabBlock] {
+        var out: [TabBlock] = []
+        var blanks = 0
+        for node in nodes {
+            if case .system(let s) = node {
+                if case .systems(let group)? = out.last {
+                    out[out.count - 1] = .systems(group + [s])
+                } else {
+                    out += Array(repeating: .node(.empty), count: blanks)
+                    out.append(.systems([s]))
+                }
+                blanks = 0
+            } else if node == .empty, case .systems? = out.last {
+                blanks += 1
+            } else {
+                out += Array(repeating: .node(.empty), count: blanks)
+                blanks = 0
+                out.append(.node(node))
+            }
+        }
+        return out + Array(repeating: .node(.empty), count: blanks)
+    }
+
     /// A tab system as VoiceOver reads it: each string's label then its frets and techniques, in order.
     static func tabSpoken(_ system: TabSystem) -> String {
-        system.strings.map { string in
-            ([string.label.isEmpty ? "string" : string.label] + string.events.map(\.text)).joined(separator: " ")
+        system.strings.enumerated().map { r, string in
+            let comment = r < system.comments.count && !system.comments[r].isEmpty ? [system.comments[r]] : []
+            return ([string.label.isEmpty ? "string" : string.label] + string.events.map(\.text) + comment).joined(separator: " ")
         }.joined(separator: ", ")
     }
 
@@ -76,4 +122,10 @@ enum SongText {
 enum TextEditError: Error, Equatable {
     case noTimedLines
     var message: String { "That file has no timed lines." }
+}
+
+/// A piece of a tab as the Tab view lays it out: a line, or systems that may stand side by side.
+enum TabBlock: Equatable {
+    case node(TabNode)
+    case systems([TabSystem])
 }

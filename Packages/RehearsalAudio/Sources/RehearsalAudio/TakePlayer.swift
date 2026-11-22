@@ -14,12 +14,12 @@ public final class TakePlayer: PlaybackYielding {
   /// Called whenever the player pauses, whoever asked: the caller, another player taking the floor, an interruption.
   public var onPause: (() -> Void)?
   public var gain: Double { didSet { applyGain() } }
-  /// The pitch shift in semitones, the tempo kept; 0 bypasses the shifter, so the sound is untouched.
+  /// The pitch shift in semitones, the tempo kept (PitchShifter.swift); at 0 the sound is untouched.
   public var semitones = 0 { didSet { applyPitch() } }
 
   private let engine: AVAudioEngine
   private let node = AVAudioPlayerNode()
-  private let shifter = AVAudioUnitTimePitch()
+  private let shifter = PitchShifter()
   private let eq = AVAudioUnitEQ(numberOfBands: 0)
   private let boost = AVAudioUnitEQ(numberOfBands: 0)
   private let file: AVAudioFile
@@ -52,11 +52,11 @@ public final class TakePlayer: PlaybackYielding {
     rangeEnd = Int(file.length)
     durationSec = Double(file.length) / rate
     engine.attach(node)
-    engine.attach(shifter)
+    engine.attach(shifter.node)
     engine.attach(eq)
     engine.attach(boost)
-    engine.connect(node, to: shifter, format: file.processingFormat)
-    engine.connect(shifter, to: eq, format: file.processingFormat)
+    engine.connect(node, to: shifter.node, format: file.processingFormat)
+    engine.connect(shifter.node, to: eq, format: file.processingFormat)
     engine.connect(eq, to: boost, format: file.processingFormat)
     engine.connect(boost, to: engine.mainMixerNode, format: file.processingFormat)
     applyGain()
@@ -159,7 +159,9 @@ public final class TakePlayer: PlaybackYielding {
     guard state == .playing else { return resumeFrame }
     // A stopped engine has no render time: the last position seen stands, so a pause keeps it.
     guard let t = node.lastRenderTime, let p = node.playerTime(forNodeTime: t) else { return lastFrame }
-    lastFrame = Playhead.frame(from: anchor, rangeStart: rangeStart, rangeEnd: rangeEnd, loops: loops, played: max(0, Int(p.sampleTime)))
+    // While shifting, what is heard lags what the node played by the shifter's latency.
+    let heard = Int(p.sampleTime) - Int((shifter.latency * rate).rounded())
+    lastFrame = Playhead.frame(from: anchor, rangeStart: rangeStart, rangeEnd: rangeEnd, loops: loops, played: max(0, heard))
     return lastFrame
   }
 
@@ -209,10 +211,7 @@ public final class TakePlayer: PlaybackYielding {
     boost.globalGain = second
   }
 
-  private func applyPitch() {
-    shifter.pitch = Float(semitones * 100)
-    shifter.bypass = semitones == 0
-  }
+  private func applyPitch() { shifter.semitones = semitones }
 
   /// The decibels for two EQs in series, each accepting up to +24 dB: the first takes the cut and the first 24.
   static func decibels(_ gain: Double) -> (Float, Float) {

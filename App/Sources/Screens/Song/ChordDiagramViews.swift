@@ -1,31 +1,40 @@
-// The diagrams tab: every chord the song uses, transposed, drawn once; an unknown chord shows its name alone.
+// Chord diagrams: the column beside the chords on iPad and the Mac, the card a chord opens on iPhone, and the
+// fingering drawn on a Canvas. An unknown chord shows its name alone.
 import SwiftUI
 
-struct DiagramsTab: View {
+/// Every chord the song uses, transposed, drawn once, in a column at the right of the chords.
+struct DiagramColumn: View {
     let chords: [String]
-    @ScaledMetric private var cell = 104.0
-    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
-        let metrics = Metrics(sizeClass)
         ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: max(148, cell + 40)), spacing: 12)], spacing: 12) {
-                ForEach(chords, id: \.self) { symbol in
-                    VStack(spacing: 6) {
-                        Text(symbol).font(.system(size: 17, weight: .bold))
-                        if let f = ChordDiagrams.shared.fingering(for: symbol) {
-                            ChordDiagramView(fingering: f).frame(width: cell, height: cell * 7 / 6)
-                        } else {
-                            Text("no diagram").font(.caption).foregroundStyle(k7.textSecondary).frame(width: cell, height: cell * 7 / 6)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 14).padding(.bottom, 10)
-                    .card(radius: 20)
-                }
+            VStack(spacing: K7Space.s12) {
+                ForEach(chords, id: \.self) { DiagramCard(symbol: $0, cell: 84).frame(maxWidth: .infinity).card(radius: 20) }
             }
-            .padding(.horizontal, metrics.margin).padding(.vertical, 6)
+            .padding(.vertical, 6)
         }
+        .scrollIndicators(.hidden)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Chord diagrams")
+    }
+}
+
+/// A chord's name over its diagram.
+struct DiagramCard: View {
+    let symbol: String
+    let cell: CGFloat
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Text(symbol).font(.system(size: 17, weight: .bold))
+            if let f = ChordDiagrams.shared.fingering(for: symbol) {
+                ChordDiagramView(fingering: f).frame(width: cell, height: cell * 7 / 6).accessibilityHidden(true)
+            } else {
+                Text("no diagram").font(.caption).foregroundStyle(k7.textSecondary).frame(width: cell, height: cell * 7 / 6)
+            }
+        }
+        .padding(.top, 14).padding(.bottom, 10).padding(.horizontal, 18)
+        .accessibilityElement(children: .combine)
     }
 }
 

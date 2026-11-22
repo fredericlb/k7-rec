@@ -5,6 +5,8 @@ import SwiftUI
 struct SheetsTab: View {
     @Environment(AppModel.self) private var model
     let song: Song
+    /// Asks for another sheet, through the song screen's one file importer.
+    let add: () -> Void
     @State private var pickedID: String?
     @State private var confirmRemove = false
     private var picked: SongSheet? { song.sheets.first { $0.id == pickedID } ?? song.sheets.first }
@@ -17,6 +19,9 @@ struct SheetsTab: View {
                         Button(sheet.name) { pickedID = sheet.id }
                             .buttonStyle(.bordered).tint(sheet.id == picked?.id ? .accentColor : .secondary)
                     }
+                    Button(action: add) { Image(systemName: "plus").frame(minWidth: 30, minHeight: 30) }
+                        .buttonStyle(.bordered).tint(.secondary)
+                        .accessibilityLabel("Add a sheet")
                     if picked != nil {
                         Button("Remove", systemImage: "trash", role: .destructive) { confirmRemove = true }.buttonStyle(.borderless)
                     }
@@ -27,7 +32,7 @@ struct SheetsTab: View {
             if let sheet = picked {
                 SheetViewer(url: sheet.url).id(sheet.id)
             } else {
-                ContentUnavailableView("No sheets", systemImage: "doc", description: Text("Add one from the song menu."))
+                ContentUnavailableView("No sheets", systemImage: "doc", description: Text("Add one with the + button."))
             }
         }
         .confirmationDialog("Remove this sheet?", isPresented: $confirmRemove, titleVisibility: .visible) {

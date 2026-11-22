@@ -106,13 +106,29 @@ of an `AVAudioUnitEQ` goes to +24 dB, so two in series reach +48 dB, past the re
 `PlaybackCoordinator`: starting one pauses the other. The metronome is not part of that rule, a
 click under a take is the point.
 
-## A transposed song is pitch-shifted, its tempo kept
+## A transposed song is pitch-shifted by Signalsmith Stretch, its tempo kept
 
-`TakePlayer` and `StemPlayer` put an `AVAudioUnitTimePitch` before the gain (after the stems' own mixer for
-the stems): Apple's phase-vocoder shifter, so no library is added, and it changes the pitch in cents with the
-rate left at 1. At 0 semitones it is bypassed, so a take or an untransposed song is heard untouched. The
-shifter reads ahead of what it outputs, so while it shifts the playhead runs about 50 ms early; the offline
-test checks the pitch (an octave doubles a tone) and that the playhead still moves at the file's own speed.
+`TakePlayer` and `StemPlayer` put a `PitchShifter` before the gain (after the stems' own mixer for the stems):
+Signalsmith Stretch 1.3.2 (MIT, with its `signalsmith-linear` 0.6.6), vendored unchanged in
+`Packages/RehearsalAudio/Sources/CStretch/vendor` with their licences and the commits they came from. It is
+chosen over Apple's `AVAudioUnitTimePitch` for how a full mix sounds: chords stay clear instead of phasey, and
+formants are kept (`setFormantFactor(1, compensatePitch)`, a 200 Hz base), so a shifted voice does not turn
+into a chipmunk. Rubber Band would do as well but is GPL or paid, which the App Store excludes.
+
+- **A C face, not C++ interop.** `CStretch.h` is plain C (create, set semitones, process in place), so the
+  Swift side needs no C++ interop mode and the vendored headers are compiled once, in `CStretch.cpp`, with
+  Accelerate for the FFTs and `-O3` even in Debug: unoptimised, the shifter would not keep up on a device.
+- **An in-process Audio Unit, one frame out for one frame in.** `StretchUnit` is registered once and inserted
+  where Apple's unit was, so the player node's scheduling (seek, ranges, loops) is unchanged. Its render
+  block pulls its input into the output buffers and shifts them in place; nothing is allocated there.
+- **At 0 semitones the sound passes untouched**, and the shifter is reset when a shift starts again.
+- **The sound lags while it shifts**, by the shifter's latency (0.12 s at the default preset), so the
+  playhead subtracts it: the line followed and the waveform's cursor stay on what is heard. A file's last
+  0.12 s stay in the shifter when its segment ends. The shifter runs about 120 times faster than real time on
+  an M-series Mac.
+
+The offline test checks the pitch (an octave doubles a tone) and that the playhead still moves at the file's
+own speed.
 
 ## The player meters what is heard
 

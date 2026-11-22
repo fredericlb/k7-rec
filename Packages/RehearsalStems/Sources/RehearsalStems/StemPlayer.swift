@@ -12,12 +12,12 @@ public final class StemPlayer: PlaybackYielding {
   public var onFinish: (() -> Void)?
   public var onPause: (() -> Void)?
   public var mix = StemMix() { didSet { applyMix() } }
-  /// The pitch shift in semitones, the tempo kept; one shifter after the stems' own mixer, bypassed at 0.
+  /// The pitch shift in semitones, the tempo kept; one shifter after the stems' own mixer, untouched at 0.
   public var semitones = 0 { didSet { applyPitch() } }
 
   private let engine = AVAudioEngine()
   private let stemsMixer = AVAudioMixerNode()
-  private let shifter = AVAudioUnitTimePitch()
+  private let shifter = PitchShifter()
   private var nodes: [Stem: AVAudioPlayerNode] = [:]
   private var files: [Stem: AVAudioFile] = [:]
   private let rate: Double
@@ -33,9 +33,9 @@ public final class StemPlayer: PlaybackYielding {
     self.coordinator = coordinator ?? .shared
     self.session = session
     engine.attach(stemsMixer)
-    engine.attach(shifter)
-    engine.connect(stemsMixer, to: shifter, format: nil)
-    engine.connect(shifter, to: engine.mainMixerNode, format: nil)
+    engine.attach(shifter.node)
+    engine.connect(stemsMixer, to: shifter.node, format: nil)
+    engine.connect(shifter.node, to: engine.mainMixerNode, format: nil)
     for stem in Stem.allCases {
       guard let url = urls[stem] else { throw StemError.unreadable }
       let file = try AVAudioFile(forReading: url)
@@ -93,7 +93,9 @@ public final class StemPlayer: PlaybackYielding {
   private var currentFrame: Int {
     guard state == .playing else { return resumeFrame }
     guard let node = nodes[.drums], let t = node.lastRenderTime, let p = node.playerTime(forNodeTime: t) else { return lastFrame }
-    lastFrame = min(frames, anchor + max(0, Int(p.sampleTime)))
+    // While shifting, what is heard lags what the nodes played by the shifter's latency.
+    let heard = Int(p.sampleTime) - Int((shifter.latency * rate).rounded())
+    lastFrame = min(frames, anchor + max(0, heard))
     return lastFrame
   }
 
@@ -131,10 +133,7 @@ public final class StemPlayer: PlaybackYielding {
     engine.pause()
   }
 
-  private func applyPitch() {
-    shifter.pitch = Float(semitones * 100)
-    shifter.bypass = semitones == 0
-  }
+  private func applyPitch() { shifter.semitones = semitones }
 
   private func applyMix() {
     for (stem, node) in nodes { node.volume = mix.gain(of: stem) }

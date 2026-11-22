@@ -102,8 +102,11 @@ speaker is picked up by the microphone; headphones are not), and K7 REC in an au
   bar sits at the top on iPad and in the title bar on the Mac, where the design has none. The three tabs stay
   alive behind the one in front, so a switch keeps their pages; picking the tab in front again goes back to
   its list. Content scrolls under the bar.
-- **A song is one column of views** (`packages/ui-library/docs/songPlayer.md`): it opens on chords, else
-  lyrics, else sheets, picked from the glass view switch under the waveform; Info and the instrumental switch
+- **A song is one column of views** (`packages/ui-library/docs/songPlayer.md`): it opens on chords (with their
+  diagrams, "Chord diagrams" below), else lyrics, else sheets, picked from the glass view switch under the waveform.
+  The switch always holds Chords, Lyrics, Sheets and Tab, those with content first: one with nothing yet comes
+  after them with a small plus, and picking it
+  asks for its content (the text editor, or the sheet picker), then opens it once saved; Info and the instrumental switch
   sit at the switch's right on iPad and the Mac, in the song's "…" on iPhone. Play and "…" share the bar's
   right capsule. Back is the navigation bar's.
 - **Recording is the round glass button beside the tab bar**, the same on every screen. A tap starts a take
@@ -181,13 +184,24 @@ speaker is picked up by the microphone; headphones are not), and K7 REC in an au
   sideways scroll is nested in the vertical one: a two-axis `ScrollView` centres short content.
 - **Tab is drawn, not printed**: a system is a `Canvas` staff on the ASCII's column grid (one monospaced
   advance per character), string labels in the accent colour, frets bold with the string line cut around
-  them, bar lines across the strings. Each system scrolls sideways on its own, so a long riff does not push
+  them, bar lines across the strings. A string's comment (`x2`, `let ring`) stands in a column at the staff's
+  right, italic, on that string's line, so it reads where it was written (`docs/text.md`). Systems written side
+  by side, or one after the other with only blank lines between, stand side by side while they fit the card and
+  wrap to the next row when they do not; a line of text or a section between two systems keeps them on rows of
+  their own, so the text stays between the parts it separates. The card's width is read from the scroll view,
+  since the card grows with what it holds. A system wider than the card scrolls sideways on its own, so a long riff does not push
   the rest of the page. What comes before the first system (title, tuning, legend) folds behind a
-  "Show header" button; VoiceOver reads a system string by string, frets only, never the dashes.
+  "Show header" button; VoiceOver reads a system string by string, frets and comment, never the dashes.
+- **Adding is done where the content goes, editing from the song menu.** A missing text or the first sheet is
+  added from its "+" tab, another sheet from the "+" beside the Sheets tab's chips; the song menu lists only
+  "Edit" for the texts the song has, so no action has two places.
 - **The popover, not a menu, holds the song menu's controls** (`.presentationCompactAdaptation(.popover)`); it is as
   wide as the screen allows, up to 400 pt. The transposition sits in the song's Info tab. The metronome sits in the
   take panel and lives in `AppModel`, so its click outlives any screen and a stop by the system (a call, a route
   change) clears its running state.
+- **The text editor takes 80% of the window each way** on iPad and the Mac, where a form sheet is too small for
+  a chord sheet's columns. The sizing API is given no container size, so `WindowFraction` reads the key window's
+  bounds. On iPhone a sheet already spans the screen.
 - **Texts are plain files of the song folder.** Saving writes the file, then rewrites the `SongFile` row in
   one transaction; an emptied text removes both. After a lyrics edit, chords that already carry timecodes
   are re-timed onto the new lyrics with `LRC.mergeTimedSheet`; untimed chords are left alone.
@@ -208,6 +222,12 @@ speaker is picked up by the microphone; headphones are not), and K7 REC in an au
 `@tombatossals/chords-db` (MIT, licence beside it). The JSON is cut to what is drawn: no MIDI, and only each
 chord's first fingering. The lookup follows `chordDiagram.ts` (`ROOT_TO_DB`, exact quality, slash form, bare
 triad) and answers nil for what is not a chord; a card with no diagram shows its name alone.
+
+- **Diagrams belong to the chords view, not to a tab of their own.** On iPad and the Mac every chord the song
+  uses, transposed, stands in a 176 pt column at the right of the chords, so a glance finds a shape while the
+  sheet scrolls. On iPhone there is no width for it: each chord in the sheet is a button that opens its diagram
+  in a popover pointing at it. A chord line is cut into runs (`SongText.chordRuns`), chords and the gaps between
+  them, and laid side by side in the same monospace, so the columns stay where the text put them.
 
 ## Playback
 

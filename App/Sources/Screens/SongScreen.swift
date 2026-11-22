@@ -6,7 +6,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 enum SongTab: String, CaseIterable {
-    case chords = "Chords", diagrams = "Diagrams", lyrics = "Lyrics", tab = "Tab", sheets = "Sheets", info = "Info"
+    case chords = "Chords", lyrics = "Lyrics", tab = "Tab", sheets = "Sheets", info = "Info"
 }
 
 /// Which file the song's one importer is asked for.
@@ -47,7 +47,7 @@ struct SongScreen: View {
                     .padding(.horizontal, metrics.margin)
             }
             HStack(spacing: K7Space.s8) {
-                GlassSegments(items: tabs.map { ($0, $0.rawValue) }, selection: current, wide: metrics.wide) { selected = $0 }
+                GlassSegments(items: SongTabs.ordered(live).map { ($0, $0.rawValue, !tabs.contains($0)) }, selection: current, wide: metrics.wide) { pick($0) }
                 if metrics.wide {
                     Spacer(minLength: 0)
                     if hasStems { versionSwitch }
@@ -71,7 +71,6 @@ struct SongScreen: View {
             SongMenu(
                 song: live,
                 edit: { kind in menuOpen = false; editing = kind },
-                addSheet: { menuOpen = false; picking = .sheet; pickedKind = .sheet },
                 importLRC: { menuOpen = false; picking = .lrc; pickedKind = .lrc },
                 downloadLyrics: { menuOpen = false; Task { await model.downloadLyrics(for: live) } },
                 stems: { menuOpen = false; stemsOpen = true },
@@ -95,7 +94,8 @@ struct SongScreen: View {
         .onChange(of: current) { refreshActive() }
         .onChange(of: stemsOpen) { hasStems = model.stems.existing(for: live) != nil }
         .sheet(isPresented: $stemsOpen) { StemsSheet(song: live) }
-        .sheet(item: $editing) { kind in TextEditorSheet(song: live, kind: kind) }
+        // The model is given again: sized by WindowFraction on the Mac, the sheet is measured outside this environment.
+        .sheet(item: $editing) { kind in TextEditorSheet(song: live, kind: kind).environment(model) }
         .fileImporter(
             isPresented: Binding(get: { picking != nil }, set: { if !$0 { picking = nil } }),
             allowedContentTypes: picking == .lrc ? [UTType(filenameExtension: "lrc") ?? .plainText, .plainText] : Self.sheetTypes
@@ -127,11 +127,23 @@ struct SongScreen: View {
         }
     }
 
+    /// A tab with content opens; an empty one asks for it, and opens once it is there.
+    private func pick(_ t: SongTab) {
+        selected = t
+        guard !tabs.contains(t) else { return }
+        switch t {
+        case .chords: editing = .chords
+        case .lyrics: editing = .lyrics
+        case .tab: editing = .tabs
+        case .sheets: picking = .sheet; pickedKind = .sheet
+        case .info: break
+        }
+    }
+
     private func actions() -> SongActions {
         SongActions(
             song: live,
             edit: { editing = $0 },
-            addSheet: { picking = .sheet; pickedKind = .sheet },
             importLRC: { picking = .lrc; pickedKind = .lrc },
             downloadLyrics: { Task { await model.downloadLyrics(for: live) } },
             stems: { stemsOpen = true })
@@ -156,11 +168,15 @@ struct SongScreen: View {
 
     @ViewBuilder private var content: some View {
         switch current {
-        case .chords: ChordsTab(text: live.chords, semitones: semitones, active: active, onTap: seek)
+        case .chords:
+            let diagrams = live.hasDiagrams ? SongText.diagramChords(chords: live.chords, lyrics: live.lyrics, semitones: semitones) : []
+            HStack(alignment: .top, spacing: 0) {
+                ChordsTab(text: live.chords, semitones: semitones, active: active, onTap: seek, tappable: !metrics.wide && !diagrams.isEmpty)
+                if metrics.wide, !diagrams.isEmpty { DiagramColumn(chords: diagrams).frame(width: 176).padding(.trailing, metrics.margin) }
+            }
         case .lyrics: LyricsTab(text: live.lyrics, active: active, onTap: seek)
         case .tab: TabTab(text: live.tab)
-        case .sheets: SheetsTab(song: live)
-        case .diagrams: DiagramsTab(chords: SongText.diagramChords(chords: live.chords, lyrics: live.lyrics, semitones: semitones))
+        case .sheets: SheetsTab(song: live) { picking = .sheet; pickedKind = .sheet }
         case .info: InfoTab(song: live)
         }
     }
@@ -209,18 +225,25 @@ struct SongScreen: View {
     static let sheetTypes: [UTType] = [.pdf, .image, .xml] + SheetKind.scoreExtensions.compactMap { UTType(filenameExtension: $0) }
 }
 
-/// Which tabs a song shows and which one it opens on.
+/// Which tabs a song has content for and which one it opens on; every one of `shown` is in the switch.
 enum SongTabs {
+    static let shown: [SongTab] = [.chords, .lyrics, .sheets, .tab]
+
+    /// The switch's order: the tabs with content first, then the empty ones, each group in `shown`'s order.
+    static func ordered(_ song: Song) -> [SongTab] {
+        let full = available(song)
+        return full + shown.filter { !full.contains($0) }
+    }
+
     static func available(_ song: Song) -> [SongTab] {
         var out: [SongTab] = []
         if song.hasChords { out.append(.chords) }
         if song.hasLyrics { out.append(.lyrics) }
         if song.hasSheets { out.append(.sheets) }
         if song.hasTab { out.append(.tab) }
-        if song.hasDiagrams { out.insert(.diagrams, at: min(1, out.count)) }
         return out
     }
 
     /// Chords, else lyrics, else sheets, else tab; Info only when the song has none.
-    static func opening(_ song: Song) -> SongTab { available(song).first { $0 != .diagrams } ?? .info }
+    static func opening(_ song: Song) -> SongTab { available(song).first ?? .info }
 }
