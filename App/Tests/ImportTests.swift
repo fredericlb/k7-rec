@@ -51,6 +51,17 @@ final class ImportTests: XCTestCase {
         XCTAssertFalse(wave.samples.isEmpty)
     }
 
+    func testAFlacIsNamedByItsVorbisComments() async throws {
+        let root = try tempFolder()
+        let flac = root.appendingPathComponent("01 track.flac")
+        try makeTaggedFlac(at: flac, comments: ["title=One More Time", "ARTIST=Daft Punk"])
+
+        let (title, artist) = await SongImporter.tags(of: flac, fallback: "01 track")
+
+        XCTAssertEqual(title, "One More Time")
+        XCTAssertEqual(artist, "Daft Punk")
+    }
+
     func testAFolderWithNothingInItFailsAndLeavesNoSong() async throws {
         let (lib, _, root) = try library()
         let empty = root.appendingPathComponent("Empty", isDirectory: true)

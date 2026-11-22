@@ -22,6 +22,28 @@ func makeWav(at url: URL, seconds: Double, amp: Float, rate: Double = 8000) thro
     try file.write(from: buffer)
 }
 
+/// A FLAC of one second whose `comments` ("TITLE=…") are a Vorbis comment block after its STREAMINFO.
+func makeTaggedFlac(at url: URL, comments: [String]) throws {
+    let fmt = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 8000, channels: 1, interleaved: false)!
+    do {
+        let file = try AVAudioFile(forWriting: url, settings: [AVFormatIDKey: kAudioFormatFLAC, AVSampleRateKey: 8000, AVNumberOfChannelsKey: 1])
+        let buffer = AVAudioPCMBuffer(pcmFormat: fmt, frameCapacity: 8000)!
+        buffer.frameLength = 8000
+        for i in 0..<8000 { buffer.floatChannelData![0][i] = 0.3 * sin(Float(i) / 5) }
+        try file.write(from: buffer)
+    }
+    var data = try Data(contentsOf: url)
+    func le(_ n: Int) -> [UInt8] { (0..<4).map { UInt8(n >> (8 * $0) & 0xFF) } }
+    var body = le(4) + Array("test".utf8) + le(comments.count)
+    for c in comments { body += le(c.utf8.count) + Array(c.utf8) }
+    // STREAMINFO is 4 + 34 bytes after "fLaC"; the new block takes over its last-block flag.
+    let last = data[4] & 0x80
+    data[4] &= 0x7F
+    let header = [4 | last, UInt8(body.count >> 16 & 0xFF), UInt8(body.count >> 8 & 0xFF), UInt8(body.count & 0xFF)]
+    data.insert(contentsOf: header + body, at: 42)
+    try data.write(to: url)
+}
+
 /// An input that makes no sound until a test pushes frames.
 final class ScriptedInput: AudioInput, @unchecked Sendable {
     var sampleRate = 8000.0

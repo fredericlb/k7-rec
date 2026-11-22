@@ -93,15 +93,23 @@ struct SongImporter: Sendable {
         try lines.joined(separator: "\n").write(to: yaml, atomically: true, encoding: .utf8)
     }
 
-    /// A song named by its tags, or by `fallback` (the file name) when it has none.
+    /// A song named by its tags, or by `fallback` (the file name) when it has none. FLAC, Ogg and Opus keep
+    /// theirs as Vorbis comments, which AVFoundation reads but leaves out of the common keys.
     static func tags(of url: URL, fallback: String) async -> (String, String) {
-        let items = (try? await AVURLAsset(url: url).load(.commonMetadata)) ?? []
-        func value(_ id: AVMetadataIdentifier) async -> String {
-            guard let item = AVMetadataItem.metadataItems(from: items, filteredByIdentifier: id).first else { return "" }
+        let asset = AVURLAsset(url: url)
+        let common = (try? await asset.load(.commonMetadata)) ?? []
+        let vorbis = (try? await asset.loadMetadata(for: .init(rawValue: "org.xiph.vorbis-comment"))) ?? []
+        func text(_ item: AVMetadataItem?) async -> String {
+            guard let item else { return "" }
             return ((try? await item.load(.stringValue)) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         }
-        let title = await value(.commonIdentifierTitle)
-        return (title.isEmpty ? fallback : title, await value(.commonIdentifierArtist))
+        func value(_ id: AVMetadataIdentifier, _ comment: String) async -> String {
+            let found = await text(AVMetadataItem.metadataItems(from: common, filteredByIdentifier: id).first)
+            if !found.isEmpty { return found }
+            return await text(vorbis.first { ($0.key as? String)?.uppercased() == comment })
+        }
+        let title = await value(.commonIdentifierTitle, "TITLE")
+        return (title.isEmpty ? fallback : title, await value(.commonIdentifierArtist, "ARTIST"))
     }
 
     static func safe(_ name: String) -> String {

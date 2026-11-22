@@ -34,7 +34,8 @@ mapped from the store's models, so a model change does not reach the views.
   the user can own, not the SQLite file. `AppPaths(root:)` moves all three into a temp folder for tests.
 - **Import copies, then files.** A picked folder or audio file is copied into `Songs/` (security-scoped
   access held only during the copy), then read by `SongFolder.read`. An audio file alone becomes a folder
-  holding `original.<ext>`, titled by its tags, else its file name.
+  holding `original.<ext>`, titled by its tags, else its file name. The tags are the common ones, else
+  the Vorbis comments (`TITLE`, `ARTIST`) that FLAC, Ogg and Opus carry and AVFoundation keeps apart.
 - **A copy is named by `SongFolder.destinationName(for:)`** (its name plus 8 characters of its id), so two
   songs of the same name never share a folder. The song row names its folder, so a text typed into a
   song that lost its last file goes back to that song's own folder.
