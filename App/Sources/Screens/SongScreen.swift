@@ -107,16 +107,19 @@ struct SongScreen: View {
         }
     }
 
-    /// Play and the song's menu, side by side at the right of the bar, so the glass makes them one capsule.
+    /// Play and the song's menu, side by side at the right of the bar, so the glass makes them one capsule; play only with audio.
     @ToolbarContentBuilder private var header: some ToolbarContent {
         ToolbarItemGroup(placement: .topBarTrailing) {
-            Button {
-                if let url = model.playURL(of: live) { model.togglePlay(id: playID, url: url) }
-            } label: {
-                Image(systemName: playing ? "pause.fill" : "play.fill").frame(minWidth: 30, minHeight: 30)
+            // A song made without audio has nothing to play, so no play button.
+            if live.audioURL != nil {
+                Button {
+                    if let url = model.playURL(of: live) { model.togglePlay(id: playID, url: url) }
+                } label: {
+                    Image(systemName: playing ? "pause.fill" : "play.fill").frame(minWidth: 30, minHeight: 30)
+                }
+                .accessibilityLabel(playing ? "Pause" : "Play")
+                .disabled(model.playURL(of: live) == nil)
             }
-            .accessibilityLabel(playing ? "Pause" : "Play")
-            .disabled(model.playURL(of: live) == nil)
             #if targetEnvironment(macCatalyst)
             // A popover anchored in the bar does not open under Catalyst; the Mac gets a menu of the same actions.
             Menu { actions() } label: { Image(systemName: "ellipsis").frame(minWidth: 30, minHeight: 30) }

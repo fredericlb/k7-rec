@@ -34,6 +34,16 @@ import Testing
         #expect(files.allSatisfy { $0.songId == song.id })
     }
 
+    @Test func aSidecarMadeInTheAppReadsBackAsASongWithNoFile() throws {
+        let yaml = try SongFolder.sidecar(uuid: "ab12", title: "Yes: 1969", artist: "#1 Band")
+        let dir = try folder(yaml, files: [])
+
+        let (song, files) = try SongFolder.read(dir)
+
+        #expect((song.id, song.title, song.artist) == ("ab12", "Yes: 1969", "#1 Band"))
+        #expect(files.isEmpty)
+    }
+
     @Test func folderWithoutSidecarFallsBackToItsName() throws {
         let dir = try folder(nil, files: ["chords.txt"])
         let (song, files) = try SongFolder.read(dir)

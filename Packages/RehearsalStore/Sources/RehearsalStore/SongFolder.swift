@@ -55,6 +55,11 @@ public enum SongFolder {
         return out
     }
 
+    /// The song.yaml of a song made in the app, which `read` gives back; Yams quotes what YAML would misread.
+    public static func sidecar(uuid: String, title: String, artist: String) throws -> String {
+        try Yams.dump(object: ["uuid": uuid, "title": title, "artist": artist], sortKeys: true)
+    }
+
     /// The folder name to copy a song to: its own name plus the first 8 characters of its id, so two songs never share one.
     public static func destinationName(for folder: URL) -> String {
         let meta = (try? String(contentsOf: folder.appendingPathComponent("song.yaml"), encoding: .utf8))

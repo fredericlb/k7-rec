@@ -1,4 +1,4 @@
-// The Songs list and the import button that hands picked URLs, or a file server's files, to the library seam.
+// The Songs list and the Add song menu: a new song without audio, or picked URLs and a file server's files for the library.
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -11,6 +11,9 @@ struct SongsScreen: View {
     @State private var missingOpen = false
     @State private var missingArtist = ""
     @State private var missingTitle = ""
+    @State private var newOpen = false
+    @State private var newTitle = ""
+    @State private var newArtist = ""
     @Environment(\.horizontalSizeClass) private var sizeClass
     private var metrics: Metrics { Metrics(sizeClass) }
 
@@ -30,7 +33,7 @@ struct SongsScreen: View {
                     .opacity(model.library.songs.isEmpty ? 0 : 1)
                 }
                 if model.library.songs.isEmpty {
-                    EmptyState(symbol: "music.note", title: "No songs yet", sentence: "Import a song folder or an audio file with Add song.")
+                    EmptyState(symbol: "music.note", title: "No songs yet", sentence: "Import a song folder or an audio file, or make a new song, with Add song.")
                 }
             }
             .screenBackground()
@@ -45,6 +48,8 @@ struct SongsScreen: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
+                        Button("New song", systemImage: "square.and.pencil") { newOpen = true }
+                        Divider()
                         Button("Import a folder", systemImage: "folder") { pickFolder = true; picking = true }
                         Button("Import audio files", systemImage: "waveform") { pickFolder = false; picking = true }
                         if model.server.connected {
@@ -58,6 +63,16 @@ struct SongsScreen: View {
                 }
             }
             .sheet(isPresented: $browsingServer) { ServerImportSheet() }
+            .alert("New song", isPresented: $newOpen) {
+                TextField("Title", text: $newTitle)
+                TextField("Artist", text: $newArtist)
+                Button("Cancel", role: .cancel) { (newTitle, newArtist) = ("", "") }
+                Button("Create") {
+                    let (title, artist) = (newTitle, newArtist)
+                    (newTitle, newArtist) = ("", "")
+                    Task { await model.createSong(title: title, artist: artist) }
+                }
+            } message: { Text("A song without audio: add its chords, lyrics, tab or sheets.") }
             .alert("Missing song", isPresented: $missingOpen) {
                 TextField("Artist", text: $missingArtist)
                 TextField("Title", text: $missingTitle)

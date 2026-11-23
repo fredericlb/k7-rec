@@ -36,6 +36,10 @@ mapped from the store's models, so a model change does not reach the views.
   access held only during the copy), then read by `SongFolder.read`. An audio file alone becomes a folder
   holding `original.<ext>`, titled by its tags, else its file name. The tags are the common ones, else
   the Vorbis comments (`TITLE`, `ARTIST`) that FLAC, Ogg and Opus carry and AVFoundation keeps apart.
+- **A song can be made without audio** (Add song → New song, a title and an artist): its folder holds
+  only the `song.yaml` that `SongFolder.sidecar` writes, named like a copy, and it opens at once. Its
+  texts and sheets come from the tab switch's + tabs. With no recording, the song screen has no waveform
+  and no play button, and its menu has no LRCLIB, LRC timing or stems: lyrics are typed, never looked up.
 - **A copy is named by `SongFolder.destinationName(for:)`** (its name plus 8 characters of its id), so two
   songs of the same name never share a folder. The song row names its folder, so a text typed into a
   song that lost its last file goes back to that song's own folder.

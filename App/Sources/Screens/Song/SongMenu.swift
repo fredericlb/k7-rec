@@ -51,10 +51,13 @@ struct SongActions: View {
                 Button("Edit \(kind.title.lowercased())", systemImage: "text.alignleft") { edit(kind) }
             }
             if song.sheets.count == 1 { Button("Add another sheet", systemImage: "doc.badge.plus") { addSheet() } }
-            Button("Import timing from an LRC file", systemImage: "clock") { importLRC() }.disabled(!song.hasLyrics)
-            Button(song.hasLyrics ? "Download timing from LRCLIB" : "Download lyrics from LRCLIB", systemImage: "arrow.down.circle") { downloadLyrics() }
-                .disabled(model.lyricsBusy)
-            Button("Separate into stems", systemImage: "waveform.path") { stems() }.disabled(song.audioURL == nil)
+            // Timing, LRCLIB and stems follow a recording; a song made without audio has none of them.
+            if song.audioURL != nil {
+                Button("Import timing from an LRC file", systemImage: "clock") { importLRC() }.disabled(!song.hasLyrics)
+                Button(song.hasLyrics ? "Download timing from LRCLIB" : "Download lyrics from LRCLIB", systemImage: "arrow.down.circle") { downloadLyrics() }
+                    .disabled(model.lyricsBusy)
+                Button("Separate into stems", systemImage: "waveform.path") { stems() }
+            }
         }
     }
 

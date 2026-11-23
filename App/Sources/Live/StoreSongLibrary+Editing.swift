@@ -14,6 +14,21 @@ extension StoreSongLibrary {
         }
     }
 
+    func createSong(title: String, artist: String) async -> Result<String, SongError> {
+        let uuid = UUID().uuidString.lowercased()
+        let name = "\(SongImporter.safe(title)) \(uuid.prefix(8))"
+        let folder = root.appendingPathComponent(name, isDirectory: true)
+        let row = RehearsalStore.Song(id: uuid, uuid: uuid, title: title, artist: artist, folder: name)
+        do {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try SongFolder.sidecar(uuid: uuid, title: title, artist: artist).write(
+                to: folder.appendingPathComponent("song.yaml"), atomically: true, encoding: .utf8)
+            try await store.write { tx in try tx.put(row) }
+            await refresh()
+            return .success(uuid)
+        } catch { return .failure(SongError(message: error.localizedDescription)) }
+    }
+
     func saveText(_ kind: TextKind, _ text: String, for song: Song) async -> String? {
         let folder = folderName(song), fm = FileManager.default
         let file = root.appendingPathComponent(folder).appendingPathComponent(kind.file)

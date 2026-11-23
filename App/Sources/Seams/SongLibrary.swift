@@ -37,6 +37,9 @@ enum TextKind: String, CaseIterable, Identifiable {
     var file: String { self == .lyrics ? "lyrics.txt" : self == .chords ? "chords.txt" : "tabs.txt" }
 }
 
+/// Why a song could not be made, as said to the user.
+struct SongError: Error, Equatable { let message: String }
+
 /// A waveform: levelled RMS samples in 0...1 and the seconds they cover.
 struct Wave: Hashable {
     var samples: [Double]
@@ -48,6 +51,8 @@ protocol SongLibrary: AnyObject {
     var songs: [Song] { get }
     /// Imports folders and audio files; returns a message when something failed.
     func importURLs(_ urls: [URL]) async -> String?
+    /// Makes a song with no file but its sidecar: nothing to play, its texts and sheets added later. Its id, or why not.
+    func createSong(title: String, artist: String) async -> Result<String, SongError>
     func wave(of song: Song) async -> Wave
     /// Writes a text of the song's folder; an emptied text removes its file. Returns a message on failure.
     func saveText(_ kind: TextKind, _ text: String, for song: Song) async -> String?
@@ -80,6 +85,12 @@ final class FakeSongLibrary: SongLibrary {
             songs.insert(Song(id: "imported-\(imported.count)-\(url.lastPathComponent)", title: url.deletingPathExtension().lastPathComponent, artist: ""), at: 0)
         }
         return nil
+    }
+
+    func createSong(title: String, artist: String) async -> Result<String, SongError> {
+        let song = Song(id: "new-\(songs.count)", title: title, artist: artist, hasChords: false, hasLyrics: false)
+        songs.insert(song, at: 0)
+        return .success(song.id)
     }
 
     func wave(of song: Song) async -> Wave { .fake }

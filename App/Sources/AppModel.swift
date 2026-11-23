@@ -32,7 +32,7 @@ final class AppModel {
     }
     /// The take just stopped, for the Takes tab to open; the tab clears it once shown.
     var stoppedTake: String?
-    /// A song another app just handed over (the share sheet, Open in), for the Songs tab to open; cleared once shown.
+    /// A song another app just handed over (the share sheet, Open in) or one just made, for the Songs tab to open; cleared once shown.
     var sharedSong: String?
     private(set) var lyricsBusy = false
     /// True while the instrumental is being mixed from the stems.
@@ -178,6 +178,16 @@ final class AppModel {
         await importURLs([url])
         Self.dropInboxCopy(url)
         sharedSong = library.songs.first { !known.contains($0.id) }?.id
+    }
+
+    /// A song the user makes without audio: no playing, and its lyrics are not looked up (docs/app.md); it opens.
+    func createSong(title: String, artist: String) async {
+        let (t, a) = (title.trimmingCharacters(in: .whitespacesAndNewlines), artist.trimmingCharacters(in: .whitespacesAndNewlines))
+        guard !t.isEmpty else { notice = "Enter a title."; return }
+        switch await library.createSong(title: t, artist: a) {
+        case .success(let id): sharedSong = id
+        case .failure(let e): notice = e.message
+        }
     }
 
     /// iOS copies a file it cannot open in place into Documents/Inbox; once imported, that copy goes.
