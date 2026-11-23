@@ -74,6 +74,7 @@ struct SongScreen: View {
                 importLRC: { menuOpen = false; picking = .lrc; pickedKind = .lrc },
                 downloadLyrics: { menuOpen = false; Task { await model.downloadLyrics(for: live) } },
                 stems: { menuOpen = false; stemsOpen = true },
+                addSheet: { menuOpen = false; picking = .sheet; pickedKind = .sheet },
                 info: metrics.wide ? nil : { menuOpen = false; selected = .info },
                 instrumental: metrics.wide || !hasStems ? nil : model.playsInstrumental(live),
                 switchVersion: { Task { await model.switchVersion(of: live) } })
@@ -146,7 +147,8 @@ struct SongScreen: View {
             edit: { editing = $0 },
             importLRC: { picking = .lrc; pickedKind = .lrc },
             downloadLyrics: { Task { await model.downloadLyrics(for: live) } },
-            stems: { stemsOpen = true })
+            stems: { stemsOpen = true },
+            addSheet: { picking = .sheet; pickedKind = .sheet })
     }
 
     /// Full song or instrumental, left of Info; it exists once the song has stems.

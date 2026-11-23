@@ -195,7 +195,9 @@ speaker is picked up by the microphone; headphones are not), and K7 REC in an au
   "Show header" button; VoiceOver reads a system string by string, frets and comment, never the dashes.
 - **Adding is done where the content goes, editing from the song menu.** A missing text or the first sheet is
   added from its "+" tab, another sheet from the "+" beside the Sheets tab's chips; the song menu lists only
-  "Edit" for the texts the song has, so no action has two places.
+  "Edit" for the texts the song has, so no action has two places. A lone sheet has no chips: a row naming the
+  one sheet there is says nothing, so its remove and expand buttons float over it and "Add another sheet" is in
+  the song menu.
 - **The popover, not a menu, holds the song menu's controls** (`.presentationCompactAdaptation(.popover)`); it is as
   wide as the screen allows, up to 400 pt. The transposition sits in the song's Info tab. The metronome sits in the
   take panel and lives in `AppModel`, so its click outlives any screen and a stop by the system (a call, a route

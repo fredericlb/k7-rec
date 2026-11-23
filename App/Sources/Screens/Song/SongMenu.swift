@@ -9,6 +9,7 @@ struct SongMenu: View {
     let importLRC: () -> Void
     let downloadLyrics: () -> Void
     let stems: () -> Void
+    let addSheet: () -> Void
     /// What does not fit beside the iPhone's view switch: Info, and the instrumental switch once there are stems.
     var info: (() -> Void)?
     var instrumental: Bool?
@@ -24,7 +25,7 @@ struct SongMenu: View {
                     .accessibilityIdentifier("versionSwitch")
             }
             if info != nil || instrumental != nil { Divider() }
-            SongActions(song: song, edit: edit, importLRC: importLRC, downloadLyrics: downloadLyrics, stems: stems)
+            SongActions(song: song, edit: edit, importLRC: importLRC, downloadLyrics: downloadLyrics, stems: stems, addSheet: addSheet)
         }
         .tint(k7.text)
         .padding()
@@ -41,13 +42,15 @@ struct SongActions: View {
     let importLRC: () -> Void
     let downloadLyrics: () -> Void
     let stems: () -> Void
+    let addSheet: () -> Void
 
     var body: some View {
         Group {
-            // Adding a missing text or a sheet is the tab switch's (its + tabs) and the Sheets tab's; only edits are here.
+            // Adding a missing text or a sheet is the tab switch's (its + tabs) and the Sheets tab's chips, except beside a lone sheet.
             ForEach(TextKind.allCases.filter(has)) { kind in
                 Button("Edit \(kind.title.lowercased())", systemImage: "text.alignleft") { edit(kind) }
             }
+            if song.sheets.count == 1 { Button("Add another sheet", systemImage: "doc.badge.plus") { addSheet() } }
             Button("Import timing from an LRC file", systemImage: "clock") { importLRC() }.disabled(!song.hasLyrics)
             Button(song.hasLyrics ? "Download timing from LRCLIB" : "Download lyrics from LRCLIB", systemImage: "arrow.down.circle") { downloadLyrics() }
                 .disabled(model.lyricsBusy)

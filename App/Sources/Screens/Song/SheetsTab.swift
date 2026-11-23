@@ -1,5 +1,6 @@
 // The sheets tab: the song's sheets as chips in the sidecar's order, the picked one shown zoomable, add and remove;
 // the expand button shows the picked sheet full screen.
+// What a reader gets wrong: a lone sheet has no chips; its buttons float over it and another is added from the song menu.
 import PDFKit
 import SwiftUI
 
@@ -15,17 +16,25 @@ struct SheetsTab: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 0) {
-                chips
-                if picked != nil {
-                    Button { fullScreen = true } label: { Image(systemName: "arrow.up.left.and.arrow.down.right").target() }
-                        .buttonStyle(.borderless).padding(.trailing)
-                        .accessibilityLabel("Full screen").accessibilityIdentifier("sheetFullScreen")
+            if !lone {
+                HStack(spacing: 0) {
+                    chips
+                    if picked != nil { expandButton.buttonStyle(.borderless).padding(.trailing) }
                 }
+                Divider()
             }
-            Divider()
             if let sheet = picked {
                 SheetViewer(url: sheet.url).id(sheet.id)
+                    .overlay(alignment: .topTrailing) {
+                        if lone {
+                            HStack {
+                                Button(role: .destructive) { confirmRemove = true } label: { Image(systemName: "trash").target() }
+                                    .accessibilityLabel("Remove the sheet")
+                                expandButton
+                            }
+                            .buttonStyle(.glass).padding()
+                        }
+                    }
             } else {
                 ContentUnavailableView("No sheets", systemImage: "doc", description: Text("Add one with the + button."))
             }
@@ -56,6 +65,14 @@ struct SheetsTab: View {
             }
             .padding(.horizontal).padding(.vertical, 6)
         }
+    }
+
+    /// One sheet alone needs no chips to pick it.
+    private var lone: Bool { song.sheets.count == 1 }
+
+    private var expandButton: some View {
+        Button { fullScreen = true } label: { Image(systemName: "arrow.up.left.and.arrow.down.right").target() }
+            .accessibilityLabel("Full screen").accessibilityIdentifier("sheetFullScreen")
     }
 }
 

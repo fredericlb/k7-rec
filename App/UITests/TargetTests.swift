@@ -68,6 +68,17 @@ final class TargetTests: XCTestCase {
         XCTAssertTrue(expand.waitForExistence(timeout: 5), "the tab is back")
     }
 
+    func testALoneSheetHasNoChipsAndAnotherIsAddedFromTheMenu() throws {
+        let app = try launch(sheet: true)
+        let sheets = app.buttons["Sheets"].firstMatch
+        XCTAssertTrue(sheets.waitForExistence(timeout: 15))
+        sheets.tap()
+        assertTarget(app.buttons["Remove the sheet"].firstMatch, "Remove the sheet")
+        XCTAssertFalse(app.buttons["Add a sheet"].exists, "no chip row for one sheet")
+        app.buttons["Song menu"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["Add another sheet"].firstMatch.waitForExistence(timeout: 5))
+    }
+
     func testTheRecButtonAndTakePanelAreTargetsWithNames() throws {
         addUIInterruptionMonitor(withDescription: "microphone") { alert in
             for label in ["Allow", "OK"] where alert.buttons[label].exists { alert.buttons[label].tap(); return true }
