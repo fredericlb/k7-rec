@@ -40,6 +40,13 @@ mapped from the store's models, so a model change does not reach the views.
   only the `song.yaml` that `SongFolder.sidecar` writes, named like a copy, and it opens at once. Its
   texts and sheets come from the tab switch's + tabs. With no recording, the song screen has no waveform
   and no play button, and its menu has no LRCLIB, LRC timing or stems: lyrics are typed, never looked up.
+- **The capo is the song's, set in Info** (a stepper, frets 0 to 12, or `capo:` in an imported `song.yaml`),
+  and kept in its row so every device shares it. When it is on, "Capo n" stands above the Chords and Tab
+  views, the two written for the hand on the capo; the transposition does not move it, the piano drops it from Chords
+  ("Chord diagrams"). A re-import keeps it.
+- **Favourites come first in Songs.** The star in a song's bar, or a row's context menu, sets the row's
+  `favorite`; the list shows the favourites, then the others, each newest first, and a favourite's tile is a
+  star. A re-import keeps it.
 - **A copy is named by `SongFolder.destinationName(for:)`** (its name plus 8 characters of its id), so two
   songs of the same name never share a folder. The song row names its folder, so a text typed into a
   song that lost its last file goes back to that song's own folder.
@@ -237,6 +244,14 @@ triad) and answers nil for what is not a chord; a card with no diagram shows its
   sheet scrolls. On iPhone there is no width for it: each chord in the sheet is a button that opens its diagram
   in a popover pointing at it. A chord line is cut into runs (`SongText.chordRuns`), chords and the gaps between
   them, and laid side by side in the same monospace, so the columns stay where the text put them.
+- **Guitar or piano is the player's, not the song's.** A switch over the column, and over the iPhone's popover,
+  sets `SongPrefs.instrument` for every song. The piano draws `PianoChord.voicing` (RehearsalText): only the
+  stretch of keys the chord needs, the right hand's keys lit with their fingers under them, a slash chord's bass
+  paler and marked L.
+- **The piano has no capo.** A guitar sheet under a capo names the shapes, not the sound; on the piano the
+  chords and their keys move up by the capo's frets (`SongPrefs.shownSemitones`), so they read in the key the
+  recording sounds in, and "Capo n" leaves the Chords view. The Tab view keeps it: a tab is a guitar's. What is
+  heard does not move, since the recording is already in that key.
 
 ## Playback
 

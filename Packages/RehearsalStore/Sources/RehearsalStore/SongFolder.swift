@@ -1,5 +1,5 @@
 // SongFolder.swift — reads a song folder (`song.yaml` and the files beside it) into a Song and its SongFiles.
-// What a reader gets wrong: only uuid, title, artist, tags and the sheets' order are read; the rest is left alone.
+// What a reader gets wrong: only uuid, title, artist, tags, capo and the sheets' order are read; the rest is left alone.
 
 import CryptoKit
 import Foundation
@@ -20,7 +20,7 @@ public enum SongFolder {
         let song = Song(
             id: uuid.isEmpty ? derivedID(source: folder) : uuid, uuid: uuid,
             title: text(meta["title"]).nonEmpty ?? folder.lastPathComponent, artist: text(meta["artist"]),
-            tags: (meta["tags"] as? [Any])?.map(text).filter { !$0.isEmpty } ?? [])
+            tags: (meta["tags"] as? [Any])?.map(text).filter { !$0.isEmpty } ?? [], capo: Int(text(meta["capo"])) ?? 0)
 
         func exists(_ rel: String) -> Bool { fm.fileExists(atPath: folder.appendingPathComponent(rel).path) }
         var files: [SongFile] = []

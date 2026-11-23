@@ -44,6 +44,12 @@ import Testing
         #expect(files.isEmpty)
     }
 
+    @Test func theSidecarsCapoIsReadAndKeptOnTheNeck() throws {
+        #expect(try SongFolder.read(folder("title: A\ncapo: 3\n", files: [])).song.capo == 3)
+        #expect(try SongFolder.read(folder("title: A\ncapo: 40\n", files: [])).song.capo == 12)
+        #expect(try SongFolder.read(folder("title: A\ncapo: two\n", files: [])).song.capo == 0)
+    }
+
     @Test func folderWithoutSidecarFallsBackToItsName() throws {
         let dir = try folder(nil, files: ["chords.txt"])
         let (song, files) = try SongFolder.read(dir)

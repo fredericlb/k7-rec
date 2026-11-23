@@ -15,6 +15,9 @@ struct Song: Identifiable, Hashable {
     var lyrics = ""
     var tab = ""
     var tags: [String] = []
+    var favorite = false
+    /// The capo's fret, 0 when there is none.
+    var capo = 0
     var sheets: [SongSheet] = []
     /// The song's folder under the songs folder, empty when no file names it.
     var folder = ""
@@ -35,6 +38,11 @@ enum TextKind: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String { self == .tabs ? "Tab" : rawValue.capitalized }
     var file: String { self == .lyrics ? "lyrics.txt" : self == .chords ? "chords.txt" : "tabs.txt" }
+}
+
+extension [Song] {
+    /// The Songs list's order: the favourites, then the others, each in the order given.
+    var favoritesFirst: [Song] { filter(\.favorite) + filter { !$0.favorite } }
 }
 
 /// Why a song could not be made, as said to the user.
@@ -60,6 +68,10 @@ protocol SongLibrary: AnyObject {
     func removeSheet(_ sheet: SongSheet, from song: Song) async -> String?
     /// Writes the song's title, artist and tags; another device gets them through the records.
     func setInfo(title: String, artist: String, tags: [String], for song: Song) async -> String?
+    /// Marks the song a favourite or not; the list shows favourites first.
+    func setFavorite(_ on: Bool, for song: Song) async -> String?
+    /// Sets the capo's fret, 0 to 12; the Chords and Tab views show it.
+    func setCapo(_ fret: Int, for song: Song) async -> String?
     /// Reads the store again, so `songs` holds what an import just filed.
     func refresh() async
 }
@@ -118,6 +130,16 @@ final class FakeSongLibrary: SongLibrary {
 
     func setInfo(title: String, artist: String, tags: [String], for song: Song) async -> String? {
         edit(song) { ($0.title, $0.artist, $0.tags) = (title, artist, tags) }
+        return nil
+    }
+
+    func setFavorite(_ on: Bool, for song: Song) async -> String? {
+        edit(song) { $0.favorite = on }
+        return nil
+    }
+
+    func setCapo(_ fret: Int, for song: Song) async -> String? {
+        edit(song) { $0.capo = min(max(fret, 0), 12) }
         return nil
     }
 

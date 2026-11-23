@@ -87,7 +87,7 @@ final class StoreSongLibrary: SongLibrary {
                 id: row.id, title: row.title, artist: row.artist, hasChords: chords != nil, hasLyrics: lyrics != nil,
                 hasTab: tab != nil, hasSheets: own.contains { $0.kind == .sheet },
                 hasDiagrams: !SongText.diagramChords(chords: chords ?? "", lyrics: lyrics ?? "", semitones: 0).isEmpty,
-                chords: chords ?? "", lyrics: lyrics ?? "", tab: tab ?? "", tags: row.tags,
+                chords: chords ?? "", lyrics: lyrics ?? "", tab: tab ?? "", tags: row.tags, favorite: row.favorite, capo: row.capo,
                 sheets: own.filter { $0.kind == .sheet }.map { SongSheet(id: $0.id, name: $0.name, url: root.appendingPathComponent($0.path)) },
                 folder: row.folder.isEmpty ? own.first.map { String($0.path.prefix { $0 != "/" }) } ?? "" : row.folder,
                 added: Date(timeIntervalSince1970: row.createdAt),

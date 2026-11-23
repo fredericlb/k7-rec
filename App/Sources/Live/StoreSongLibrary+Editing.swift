@@ -95,6 +95,28 @@ extension StoreSongLibrary {
         } catch { return error.localizedDescription }
     }
 
+    func setFavorite(_ on: Bool, for song: Song) async -> String? {
+        await change(song) { $0.favorite = on }
+    }
+
+    func setCapo(_ fret: Int, for song: Song) async -> String? {
+        await change(song) { $0.capo = min(max(fret, 0), 12) }
+    }
+
+    /// Changes the song's row in one transaction, then reads the store again.
+    private func change(_ song: Song, _ edit: @escaping @Sendable (inout RehearsalStore.Song) -> Void) async -> String? {
+        let songID = song.id
+        do {
+            try await store.write { tx in
+                guard var row = try tx.get(RehearsalStore.Song.self, songID) else { return }
+                edit(&row)
+                try tx.put(row)
+            }
+            await refresh()
+            return nil
+        } catch { return error.localizedDescription }
+    }
+
     private func uniqueName(_ name: String, in dir: URL) -> String {
         let fm = FileManager.default
         let base = (name as NSString).deletingPathExtension, ext = (name as NSString).pathExtension

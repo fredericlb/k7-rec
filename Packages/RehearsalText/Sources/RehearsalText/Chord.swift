@@ -13,7 +13,8 @@ public struct Chord: Equatable, Sendable, CustomStringConvertible {
     static let note = "[A-G](?:#|b|♯|♭)?"
     static let quality = "(?:maj|min|aug|dim|sus|add|m|M|Δ|°|ø|\\+|-)"
     static let ext = "(?:[0-9]|[#b][0-9]|\\([^)]*\\))"
-    static let chordRe = Rx("^\(note)(?:\(quality)?\(ext)*)(?:/\(note))?\\z")
+    // A quality may follow a number too (`A7sus4`, `C7sus2`), so the two alternate.
+    static let chordRe = Rx("^\(note)(?:\(quality)?(?:\(ext)|sus|add|maj)*)(?:/\(note))?\\z")
     static let noChord = Rx("^N\\.?C\\.?\\z", ignoreCase: true)
     static let flatMark = Rx("b|♭")
 

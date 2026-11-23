@@ -11,8 +11,15 @@ import Testing
         }
     }
 
+    @Test func acceptsAQualityAfterANumber() {
+        for c in ["A7sus4", "C9sus4", "D7add11", "E7sus2/B"] {
+            #expect(Chord.isChord(c), "\(c)")
+        }
+        #expect(ChordSheet.parse("Em7   G    Dsus4   A7sus4")[0] == .chords(text: "Em7   G    Dsus4   A7sus4"))
+    }
+
     @Test func rejectsOrdinaryWords() {
-        for w in ["Hello", "Verse", "Bad", "Cage", "Fed", "the", "Chorus"] {
+        for w in ["Hello", "Verse", "Bad", "Cage", "Fed", "the", "Chorus", "Dad", "Add", "Ada", "Base", "Gasp"] {
             #expect(!Chord.isChord(w), "\(w)")
         }
     }

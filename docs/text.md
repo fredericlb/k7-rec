@@ -10,7 +10,12 @@ in `packages/lyrics/docs/chords.md`, `packages/lyrics/docs/timecodes.md` and
 
 A chord is a root plus qualities, extensions and alterations from a fixed list, never "any letters".
 That is what keeps `Bad`, `Cage` and `Fed` out of the chord lines. A looser test would turn lyric
-lines into chord lines and transpose words.
+lines into chord lines and transpose words. After the quality, numbers and `sus`, `add`, `maj` may alternate
+(`A7sus4`, `C9sus4`), as sheets write them; the rest of a word must still be made of those pieces, so `Dad`
+and `Ada` stay words.
+
+A piano voicing (`PianoChord`) is a fixed table of qualities as intervals, in root position, five keys at most;
+a quality it does not know falls back on its triad, never on a guess.
 
 ## Spacing is kept
 

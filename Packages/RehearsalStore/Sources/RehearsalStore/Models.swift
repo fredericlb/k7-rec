@@ -35,13 +35,18 @@ public struct Song: Document {
     public var storeId: String
     /// The song's folder under the songs folder; empty for a row that never named one.
     public var folder: String
+    /// The user's favourite, listed first; kept in the row so every device shares it.
+    public var favorite: Bool
+    /// The fret the capo sits on, 0 to 12; 0 is no capo.
+    public var capo: Int
 
     public init(id: String = newID(), uuid: String = "", title: String = "", artist: String = "",
                 tags: [String] = [], createdAt: Double = Date().timeIntervalSince1970,
-                source: SongSource = .file, storeId: String = "", folder: String = "") {
+                source: SongSource = .file, storeId: String = "", folder: String = "", favorite: Bool = false,
+                capo: Int = 0) {
         (self.id, self.uuid, self.title, self.artist, self.tags, self.createdAt) =
             (id, uuid, title, artist, tags, createdAt)
-        (self.source, self.storeId, self.folder) = (source, storeId, folder)
+        (self.source, self.storeId, self.folder, self.favorite, self.capo) = (source, storeId, folder, favorite, min(max(capo, 0), 12))
     }
 
     public init(from decoder: Decoder) throws {
@@ -49,7 +54,8 @@ public struct Song: Document {
         self.init(id: try c.zero(.id, ""), uuid: try c.zero(.uuid, ""), title: try c.zero(.title, ""),
                   artist: try c.zero(.artist, ""), tags: try c.zero(.tags, []), createdAt: try c.zero(.createdAt, 0),
                   source: (try? c.decodeIfPresent(SongSource.self, forKey: .source)) ?? .file,
-                  storeId: try c.zero(.storeId, ""), folder: try c.zero(.folder, ""))
+                  storeId: try c.zero(.storeId, ""), folder: try c.zero(.folder, ""), favorite: try c.zero(.favorite, false),
+                  capo: try c.zero(.capo, 0))
     }
 }
 

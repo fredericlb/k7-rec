@@ -22,12 +22,18 @@ struct SongsScreen: View {
             // A ZStack, not an overlay: an overlay of the scroll view proposed no width, and the empty state wrapped at every word.
             ZStack {
                 ScrollView {
-                    CardRows(items: model.library.songs, separatorInset: 74) { song in
+                    CardRows(items: model.library.songs.favoritesFirst, separatorInset: 74) { song in
                         NavigationLink(value: song) {
-                            RowLabel(title: song.title, second: song.artist) { IconTile(symbol: "music.note") }
+                            RowLabel(title: song.title, second: song.artist) { IconTile(symbol: song.favorite ? "star.fill" : "music.note") }
                                 .padding(.leading, K7Space.s20).padding(.trailing, K7Space.s16)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityValue(song.favorite ? "Favourite" : "")
+                        .contextMenu {
+                            Button(song.favorite ? "Remove from favourites" : "Add to favourites", systemImage: song.favorite ? "star.slash" : "star") {
+                                Task { await model.toggleFavorite(song) }
+                            }
+                        }
                     }
                     .padding(.horizontal, metrics.margin).padding(.top, 8)
                     .opacity(model.library.songs.isEmpty ? 0 : 1)

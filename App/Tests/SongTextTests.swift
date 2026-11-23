@@ -64,6 +64,19 @@ final class SongTextTests: XCTestCase {
         XCTAssertNil(SongText.timedChords(chords: "  \n", lyrics: "{{00:05.00}} Hello world"))
     }
 
+    func testThePianoReadsTheChordsInTheSoundingKeyAndTheGuitarUnderTheCapo() {
+        let suite = UserDefaults(suiteName: "prefs-\(UUID().uuidString)")!
+        let prefs = SongPrefs(defaults: suite)
+        let song = Song(id: "a", title: "A", artist: "", capo: 2)
+        prefs.setTranspose(1, of: "a")
+        XCTAssertEqual(prefs.instrument, .guitar)
+        XCTAssertEqual(prefs.shownSemitones(of: song), 1)
+        prefs.instrument = .piano
+        XCTAssertEqual(prefs.shownSemitones(of: song), 3)
+        XCTAssertEqual(SongText.diagramChords(chords: "Em7 G D", lyrics: "", semitones: prefs.shownSemitones(of: Song(id: "b", title: "B", artist: "", capo: 2))), ["F#m7", "A", "E"])
+        XCTAssertEqual(SongPrefs(defaults: suite).instrument, .piano, "the instrument is kept")
+    }
+
     func testTranspositionIsKeptPerSongAndWrapsInsideAnOctave() {
         let suite = UserDefaults(suiteName: "prefs-\(UUID().uuidString)")!
         let prefs = SongPrefs(defaults: suite)

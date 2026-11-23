@@ -1,4 +1,4 @@
-// One song: the bar holds back, the title and artist, play and the menu; under it the waveform, then the views
+// One song: the bar holds back, the title and artist, the favourite star, play and the menu; under it the waveform, then the views
 // as a glass switch, with Info and the instrumental switch at its right on iPad and the Mac, in the menu on iPhone.
 // What a reader gets wrong: the screen reads the live song by id, since the pushed value is a snapshot.
 import RehearsalText
@@ -31,7 +31,8 @@ struct SongScreen: View {
     private var playing: Bool {
         model.player.loadedID == playID && model.player.isPlaying
     }
-    private var semitones: Int { model.prefs.transpose(of: song.id) }
+    /// The chords' shift: the transposition, plus the capo on the piano (SongPrefs.shownSemitones).
+    private var semitones: Int { model.prefs.shownSemitones(of: live) }
 
     private var tabs: [SongTab] { SongTabs.available(live) }
     private var current: SongTab { selected.flatMap { $0 == .info || tabs.contains($0) ? $0 : nil } ?? SongTabs.opening(live) }
@@ -61,6 +62,8 @@ struct SongScreen: View {
                 }
             }
             .padding(.horizontal, metrics.margin)
+            // The piano has no capo: its chords already read in the sounding key. The tab stays a guitar's.
+            if live.capo > 0, current == .tab || (current == .chords && model.prefs.instrument == .guitar) { capoNote }
             content.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .padding(.top, 6)
@@ -110,6 +113,10 @@ struct SongScreen: View {
     /// Play and the song's menu, side by side at the right of the bar, so the glass makes them one capsule; play only with audio.
     @ToolbarContentBuilder private var header: some ToolbarContent {
         ToolbarItemGroup(placement: .topBarTrailing) {
+            Button { Task { await model.toggleFavorite(live) } } label: {
+                Image(systemName: live.favorite ? "star.fill" : "star").frame(minWidth: 30, minHeight: 30)
+            }
+            .accessibilityLabel(live.favorite ? "Remove from favourites" : "Add to favourites")
             // A song made without audio has nothing to play, so no play button.
             if live.audioURL != nil {
                 Button {
@@ -152,6 +159,15 @@ struct SongScreen: View {
             downloadLyrics: { Task { await model.downloadLyrics(for: live) } },
             stems: { stemsOpen = true },
             addSheet: { picking = .sheet; pickedKind = .sheet })
+    }
+
+    /// "Capo 3" above the chords and the tab, which are written for the hand on the capo.
+    private var capoNote: some View {
+        Label("Capo \(live.capo)", systemImage: "guitars")
+            .font(.system(size: 15, weight: .semibold)).foregroundStyle(k7.accentIcon)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, metrics.margin)
+            .accessibilityIdentifier("capo")
     }
 
     /// Full song or instrumental, left of Info; it exists once the song has stems.

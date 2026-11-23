@@ -53,6 +53,8 @@ struct SongImporter: Sendable {
                 var kept = filed
                 kept.createdAt = old.createdAt
                 if kept.tags.isEmpty { kept.tags = old.tags }
+                kept.favorite = old.favorite
+                if kept.capo == 0 { kept.capo = old.capo }
                 try tx.put(kept)
             } else { try tx.put(filed) }
             for f in try tx.list(Query<SongFile>(where: [Filter("songId", equals: .text(filed.id))])) { try tx.delete(SongFile.self, f.id) }

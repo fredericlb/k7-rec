@@ -1,6 +1,21 @@
-// Chord diagrams: the column beside the chords on iPad and the Mac, the card a chord opens on iPhone, and the
-// fingering drawn on a Canvas. An unknown chord shows its name alone.
+// Chord diagrams: the column beside the chords on iPad and the Mac, the card a chord opens on iPhone, each under
+// the guitar/piano switch; a guitar fingering or a piano's keys drawn on a Canvas. An unknown chord shows its name alone.
+import RehearsalText
 import SwiftUI
+
+/// Guitar or piano, over the diagrams; the reader's choice, kept for every song.
+struct InstrumentSwitch: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        @Bindable var prefs = model.prefs
+        Picker("Instrument", selection: $prefs.instrument) {
+            ForEach(Instrument.allCases, id: \.self) { Text($0.rawValue.capitalized).tag($0) }
+        }
+        .pickerStyle(.segmented)
+        .accessibilityIdentifier("instrument")
+    }
+}
 
 /// Every chord the song uses, transposed, drawn once, in a column at the right of the chords.
 struct DiagramColumn: View {
@@ -9,6 +24,7 @@ struct DiagramColumn: View {
     var body: some View {
         ScrollView {
             VStack(spacing: K7Space.s12) {
+                InstrumentSwitch()
                 ForEach(chords, id: \.self) { DiagramCard(symbol: $0, cell: 84).frame(maxWidth: .infinity).card(radius: 20) }
             }
             .padding(.vertical, 6)
@@ -19,15 +35,20 @@ struct DiagramColumn: View {
     }
 }
 
-/// A chord's name over its diagram.
+/// A chord's name over its diagram, for the instrument the reader chose.
 struct DiagramCard: View {
+    @Environment(AppModel.self) private var model
     let symbol: String
     let cell: CGFloat
 
     var body: some View {
         VStack(spacing: 6) {
             Text(symbol).font(.system(size: 17, weight: .bold))
-            if let f = ChordDiagrams.shared.fingering(for: symbol) {
+            if model.prefs.instrument == .piano, let v = PianoChord.voicing(symbol) {
+                PianoChordView(voicing: v).frame(width: cell * 1.65, height: cell * 0.8).accessibilityHidden(true)
+            } else if model.prefs.instrument == .piano {
+                Text("no diagram").font(.caption).foregroundStyle(k7.textSecondary).frame(width: cell * 1.65, height: cell * 0.8)
+            } else if let f = ChordDiagrams.shared.fingering(for: symbol) {
                 ChordDiagramView(fingering: f).frame(width: cell, height: cell * 7 / 6).accessibilityHidden(true)
             } else {
                 Text("no diagram").font(.caption).foregroundStyle(k7.textSecondary).frame(width: cell, height: cell * 7 / 6)
@@ -80,6 +101,47 @@ struct ChordDiagramView: View {
                     ctx.stroke(cross, with: .color(k7.textSecondary), style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
                 }
             }
+        }
+    }
+}
+
+/// A piano chord: the keys from a white key below the lowest to one above the highest, the right hand's keys lit
+/// with their fingers under them, the left hand's bass paler and marked L.
+struct PianoChordView: View {
+    let voicing: PianoVoicing
+    private static let blacks: Set<Int> = [1, 3, 6, 8, 10]
+    private static func black(_ k: Int) -> Bool { blacks.contains(((k % 12) + 12) % 12) }
+
+    var body: some View {
+        Canvas { ctx, size in
+            let all = voicing.keys + (voicing.bass.map { [$0] } ?? [])
+            var lo = all.min()! - 1, hi = all.max()! + 1
+            while Self.black(lo) { lo -= 1 }
+            while Self.black(hi) { hi += 1 }
+            let whites = (lo...hi).filter { !Self.black($0) }
+            let label = 16.0, h = size.height - label, ww = size.width / Double(whites.count)
+            let bw = ww * 0.62, bh = h * 0.6
+            func x(_ k: Int) -> Double {
+                Self.black(k) ? Double(whites.firstIndex(of: k + 1)!) * ww - bw / 2 : Double(whites.firstIndex(of: k)!) * ww
+            }
+            func fill(_ k: Int) -> Color? {
+                if voicing.keys.contains(k) { return k7.accentIcon }
+                return k == voicing.bass ? k7.accentIcon.opacity(0.5) : nil
+            }
+            for k in whites {
+                let r = CGRect(x: x(k) + 0.5, y: 0, width: ww - 1, height: h)
+                ctx.fill(Path(roundedRect: r, cornerRadius: 3), with: .color(fill(k) ?? Color.white.opacity(0.92)))
+            }
+            for k in lo...hi where Self.black(k) {
+                let r = CGRect(x: x(k), y: 0, width: bw, height: bh)
+                ctx.fill(Path(roundedRect: r, cornerRadius: 2), with: .color(fill(k) ?? Color.black))
+            }
+            func mark(_ text: String, under k: Int) {
+                let mid = x(k) + (Self.black(k) ? bw : ww) / 2
+                ctx.draw(Text(text).font(.system(size: 11, weight: .bold)).foregroundStyle(k7.textSecondary), at: CGPoint(x: mid, y: h + label / 2))
+            }
+            for (k, f) in zip(voicing.keys, voicing.fingers) { mark("\(f)", under: k) }
+            if let b = voicing.bass { mark("L", under: b) }
         }
     }
 }

@@ -64,8 +64,12 @@ struct ChordsTab: View {
         .accessibilityLabel("Chord \(symbol)")
         .accessibilityHint("Shows its diagram")
         .popover(isPresented: Binding(get: { shown == spot }, set: { if !$0 { shown = nil } })) {
-            DiagramCard(symbol: symbol, cell: 120)
-                .presentationCompactAdaptation(.popover)
+            VStack(spacing: K7Space.s8) {
+                InstrumentSwitch()
+                DiagramCard(symbol: symbol, cell: 120)
+            }
+            .padding(.top, K7Space.s12).padding(.horizontal, K7Space.s12)
+            .presentationCompactAdaptation(.popover)
                 .presentationBackground(k7.menu)
         }
     }

@@ -1,5 +1,5 @@
 // The info tab, as the design system's cards: title and artist editable, the date added, the transposition (the
-// sheets and the sound move together), the tags as chips with a field to add one. Every edit is saved as it is made.
+// sheets and the sound move together), the capo, the tags as chips with a field to add one. Every edit is saved as made.
 import SwiftUI
 
 struct InfoTab: View {
@@ -17,6 +17,7 @@ struct InfoTab: View {
             VStack(spacing: K7Space.s24) {
                 about
                 transpose
+                capo
                 tags
             }
             .frame(maxWidth: metrics.wide ? 640 : .infinity)
@@ -49,6 +50,18 @@ struct InfoTab: View {
             }
             Separator()
             ActionRow(title: "Reset", busy: false, enabled: semitones != 0) { model.setTranspose(0, of: song.id) }
+        }
+    }
+
+    private var capo: some View {
+        let fret = song.capo
+        return SettingsCard("Capo", note: "The fret the capo sits on; Chords and Tab show it.") {
+            SettingRow("Fret") {
+                StepperControl(
+                    label: fret == 0 ? "None" : "\(fret)", minusLabel: "Capo down", plusLabel: "Capo up", valueInside: false,
+                    minus: { if fret > 0 { Task { await model.setCapo(fret - 1, of: song) } } },
+                    plus: { if fret < 12 { Task { await model.setCapo(fret + 1, of: song) } } })
+            }
         }
     }
 

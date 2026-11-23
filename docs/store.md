@@ -30,7 +30,9 @@ A song carries `source` (`file`, the zero value, or `appleMusicReference`) and `
 reference songs (Apple Music is not a source) and does not list one an older version left: the row stays in the
 store, unread. Every row written before the field existed reads as `file` with no code to migrate it. A song also names its `folder` under the
 songs folder, so the files made for it have one home whether or not it still has a file; a row with none
-reads as empty and the app falls back on the folder of its first file.
+reads as empty and the app falls back on the folder of its first file. A song's `favorite` is in its row, not in
+the device's preferences, so the sync carries it to every device; a row without it reads as false. So does the
+`capo` (0 to 12, 0 for none), which `SongFolder.read` also takes from a sidecar's `capo:`.
 
 ## One writer, short transactions
 

@@ -190,6 +190,16 @@ final class AppModel {
         }
     }
 
+    /// Marks the song a favourite, or not; the Songs list shows favourites first.
+    func toggleFavorite(_ song: Song) async {
+        if let failure = await library.setFavorite(!song.favorite, for: song) { notice = failure }
+    }
+
+    /// Puts the capo on a fret, 0 to 12; 0 takes it off.
+    func setCapo(_ fret: Int, of song: Song) async {
+        if let failure = await library.setCapo(fret, for: song) { notice = failure }
+    }
+
     /// iOS copies a file it cannot open in place into Documents/Inbox; once imported, that copy goes.
     static func dropInboxCopy(_ url: URL, documents: URL? = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first) {
         guard let documents else { return }
