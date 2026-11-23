@@ -1,9 +1,10 @@
 // Every icon-only control is a 44 pt target with a name VoiceOver can read, on the song screen, the rec button and the take panel.
 import AVFoundation
+import UIKit
 import XCTest
 
 final class TargetTests: XCTestCase {
-    private func launch() throws -> XCUIApplication {
+    private func launch(sheet: Bool = false) throws -> XCUIApplication {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ui-\(UUID().uuidString)/Target Song", isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let file = try AVAudioFile(forWriting: folder.appendingPathComponent("original.wav"), settings: [
@@ -14,6 +15,12 @@ final class TargetTests: XCTestCase {
         try file.write(from: buffer)
         try "Am F\n".write(to: folder.appendingPathComponent("chords.txt"), atomically: true, encoding: .utf8)
         try "la la\n".write(to: folder.appendingPathComponent("lyrics.txt"), atomically: true, encoding: .utf8)
+        if sheet {
+            let sheets = folder.appendingPathComponent("sheets", isDirectory: true)
+            try FileManager.default.createDirectory(at: sheets, withIntermediateDirectories: true)
+            let png = UIGraphicsImageRenderer(size: CGSize(width: 40, height: 60)).pngData { $0.fill(CGRect(x: 0, y: 0, width: 40, height: 60)) }
+            try png.write(to: sheets.appendingPathComponent("page.png"))
+        }
         let app = XCUIApplication()
         app.launchArguments = ["-ImportOnLaunch", folder.path, "-OpenFirstSong", "YES", "-NoLyricsLookup", "YES", "-FreshLibrary", "YES"]
         app.launch()
@@ -44,6 +51,21 @@ final class TargetTests: XCTestCase {
         add.tap()
         XCTAssertTrue(app.navigationBars["Tab"].waitForExistence(timeout: 5), "the tab editor opens")
         XCTAssertTrue(app.buttons["Cancel"].firstMatch.exists)
+    }
+
+    func testTheSheetGoesFullScreenAndBack() throws {
+        let app = try launch(sheet: true)
+        let sheets = app.buttons["Sheets"].firstMatch
+        XCTAssertTrue(sheets.waitForExistence(timeout: 15))
+        sheets.tap()
+        let expand = app.buttons["sheetFullScreen"].firstMatch
+        assertTarget(expand, "Full screen")
+        XCTAssertEqual(expand.label, "Full screen")
+        expand.tap()
+        let shrink = app.buttons["sheetExitFullScreen"].firstMatch
+        assertTarget(shrink, "Exit full screen")
+        shrink.tap()
+        XCTAssertTrue(expand.waitForExistence(timeout: 5), "the tab is back")
     }
 
     func testTheRecButtonAndTakePanelAreTargetsWithNames() throws {
