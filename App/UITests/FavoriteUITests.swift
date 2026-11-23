@@ -13,14 +13,21 @@ final class FavoriteUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Song menu"].firstMatch.waitForExistence(timeout: 10))
     }
 
+    /// The star is in the bar on iPad and the Mac, in the song menu on iPhone.
+    private func star(_ app: XCUIApplication) {
+        if !app.buttons["Add to favourites"].firstMatch.waitForExistence(timeout: 2) { app.buttons["Song menu"].firstMatch.tap() }
+        let button = app.buttons["Add to favourites"].firstMatch
+        XCTAssertTrue(button.waitForExistence(timeout: 5))
+        button.tap()
+    }
+
     func testAStarredSongIsListedFirst() {
         let app = XCUIApplication()
         app.launchArguments = ["-NoLyricsLookup", "YES", "-FreshLibrary", "YES"]
         app.launch()
         XCTAssertTrue(app.buttons["Add song"].firstMatch.waitForExistence(timeout: 15))
         create(app, "Older")
-        app.buttons["Add to favourites"].firstMatch.tap()
-        XCTAssertTrue(app.buttons["Remove from favourites"].firstMatch.waitForExistence(timeout: 5))
+        star(app)
         app.navigationBars.buttons.element(boundBy: 0).tap()
         create(app, "Newer")
         app.navigationBars.buttons.element(boundBy: 0).tap()

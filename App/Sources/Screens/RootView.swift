@@ -49,7 +49,7 @@ struct RootView: View {
             withAnimation(.bouncy(duration: 0.5, extraBounce: 0.15)) { tab = .songs }
             model.songsInFront = true
         }
-        .sheet(isPresented: Bindable(model).recorderOpen) { RecordingScreen() }
+        .sheet(isPresented: Bindable(model).recorderOpen) { RecordingScreen().environment(model) }
         .alert("K7 REC", isPresented: Binding(get: { model.notice != nil }, set: { if !$0 { model.notice = nil } })) {
             Button("OK") {}
         } message: { Text(model.notice ?? "") }

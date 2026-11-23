@@ -4,7 +4,7 @@ import UIKit
 import XCTest
 
 final class TargetTests: XCTestCase {
-    private func launch(sheet: Bool = false) throws -> XCUIApplication {
+    private func launch(sheet: Bool = false, score: Bool = false) throws -> XCUIApplication {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ui-\(UUID().uuidString)/Target Song", isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let file = try AVAudioFile(forWriting: folder.appendingPathComponent("original.wav"), settings: [
@@ -20,6 +20,11 @@ final class TargetTests: XCTestCase {
             try FileManager.default.createDirectory(at: sheets, withIntermediateDirectories: true)
             let png = UIGraphicsImageRenderer(size: CGSize(width: 40, height: 60)).pngData { $0.fill(CGRect(x: 0, y: 0, width: 40, height: 60)) }
             try png.write(to: sheets.appendingPathComponent("page.png"))
+        }
+        if score {
+            let sheets = folder.appendingPathComponent("sheets", isDirectory: true)
+            try FileManager.default.createDirectory(at: sheets, withIntermediateDirectories: true)
+            try Self.score.write(to: sheets.appendingPathComponent("score.musicxml"), atomically: true, encoding: .utf8)
         }
         let app = XCUIApplication()
         app.launchArguments = ["-ImportOnLaunch", folder.path, "-OpenFirstSong", "YES", "-NoLyricsLookup", "YES", "-FreshLibrary", "YES"]
@@ -54,7 +59,21 @@ final class TargetTests: XCTestCase {
     }
 
     func testTheSheetGoesFullScreenAndBack() throws {
-        let app = try launch(sheet: true)
+        try fullScreenAndBack(try launch(sheet: true))
+    }
+
+    func testAScoreGoesFullScreenAndBack() throws {
+        try fullScreenAndBack(try launch(score: true))
+    }
+
+    private static let score = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <score-partwise version="3.1"><part-list><score-part id="P1"><part-name>P</part-name></score-part></part-list>
+    <part id="P1"><measure number="1"><attributes><divisions>1</divisions><clef><sign>G</sign><line>2</line></clef></attributes>
+    <note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><type>whole</type></note></measure></part></score-partwise>
+    """
+
+    private func fullScreenAndBack(_ app: XCUIApplication) throws {
         let sheets = app.buttons["Sheets"].firstMatch
         XCTAssertTrue(sheets.waitForExistence(timeout: 15))
         sheets.tap()

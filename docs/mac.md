@@ -21,9 +21,9 @@ code base, so the library, the recorder, the stems and the sync are the same cod
   change as it starts, and the player, which pauses on a route change, stopped at once. A take in progress keeps
   `.playAndRecord`; and if a configuration change still arrives while a song plays, the Mac restarts the engine
   and goes on from the same frame instead of pausing (the phone pauses: it means the headphones were unplugged).
-- **A sheet with its own sizing is given the model again.** The text editor's `WindowFraction` sizing makes
-  Catalyst measure the sheet outside the presenting view's environment, and a view reading `AppModel` there
-  traps; the sheet's content therefore carries `.environment(model)` itself.
+- **Every presentation is given the model again.** Catalyst may build a sheet, popover or full-screen cover
+  outside the presenting view's environment (a sheet with its own sizing, a full-screen cover), and a view
+  reading `AppModel` there traps; each presentation's content therefore carries `.environment(model)` itself.
 - **The deployment target is macOS 26**, the Catalyst counterpart of iOS 26, which Liquid Glass needs.
 
 ## Only a device can verify

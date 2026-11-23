@@ -79,8 +79,10 @@ struct SongScreen: View {
                 stems: { menuOpen = false; stemsOpen = true },
                 addSheet: { menuOpen = false; picking = .sheet; pickedKind = .sheet },
                 info: metrics.wide ? nil : { menuOpen = false; selected = .info },
+                favorite: metrics.wide ? nil : { menuOpen = false; Task { await model.toggleFavorite(live) } },
                 instrumental: metrics.wide || !hasStems ? nil : model.playsInstrumental(live),
                 switchVersion: { Task { await model.switchVersion(of: live) } })
+                .environment(model)
                 .presentationCompactAdaptation(.popover)
                 .presentationBackground(k7.menu)
         }
@@ -97,8 +99,8 @@ struct SongScreen: View {
         .onDisappear { if model.shownSong?.id == live.id { model.shownSong = nil } }
         .onChange(of: current) { refreshActive() }
         .onChange(of: stemsOpen) { hasStems = model.stems.existing(for: live) != nil }
-        .sheet(isPresented: $stemsOpen) { StemsSheet(song: live) }
-        // The model is given again: sized by WindowFraction on the Mac, the sheet is measured outside this environment.
+        .sheet(isPresented: $stemsOpen) { StemsSheet(song: live).environment(model) }
+        // Every presentation is given the model again: Catalyst may build it outside this environment (docs/mac.md).
         .sheet(item: $editing) { kind in TextEditorSheet(song: live, kind: kind).environment(model) }
         .fileImporter(
             isPresented: Binding(get: { picking != nil }, set: { if !$0 { picking = nil } }),
@@ -111,12 +113,15 @@ struct SongScreen: View {
     }
 
     /// Play and the song's menu, side by side at the right of the bar, so the glass makes them one capsule; play only with audio.
+    /// The star joins them where the bar is wide; on iPhone it would push them into an overflow menu, so it is in the song menu.
     @ToolbarContentBuilder private var header: some ToolbarContent {
         ToolbarItemGroup(placement: .topBarTrailing) {
-            Button { Task { await model.toggleFavorite(live) } } label: {
-                Image(systemName: live.favorite ? "star.fill" : "star").frame(minWidth: 30, minHeight: 30)
+            if metrics.wide {
+                Button { Task { await model.toggleFavorite(live) } } label: {
+                    Image(systemName: live.favorite ? "star.fill" : "star").frame(minWidth: 30, minHeight: 30)
+                }
+                .accessibilityLabel(live.favorite ? "Remove from favourites" : "Add to favourites")
             }
-            .accessibilityLabel(live.favorite ? "Remove from favourites" : "Add to favourites")
             // A song made without audio has nothing to play, so no play button.
             if live.audioURL != nil {
                 Button {

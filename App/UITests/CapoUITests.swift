@@ -8,7 +8,8 @@ final class CapoUITests: XCTestCase {
         try "title: Capo Song\ncapo: 2\n".write(to: folder.appendingPathComponent("song.yaml"), atomically: true, encoding: .utf8)
         try "Am F C G\n".write(to: folder.appendingPathComponent("chords.txt"), atomically: true, encoding: .utf8)
         let app = XCUIApplication()
-        app.launchArguments = ["-ImportOnLaunch", folder.path, "-OpenFirstSong", "YES", "-NoLyricsLookup", "YES", "-FreshLibrary", "YES"]
+        // The guitar is pinned: the instrument is a device preference another test may have left on the piano.
+        app.launchArguments = ["-ImportOnLaunch", folder.path, "-OpenFirstSong", "YES", "-NoLyricsLookup", "YES", "-FreshLibrary", "YES", "-instrument", "guitar"]
         app.launch()
 
         XCTAssertTrue(app.staticTexts["Capo 2"].firstMatch.waitForExistence(timeout: 15), "the chords open under their capo")

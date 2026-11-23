@@ -40,7 +40,7 @@ struct SheetsTab: View {
             }
         }
         .fullScreenCover(isPresented: $fullScreen) {
-            if let sheet = picked { FullScreenSheet(sheet: sheet) { fullScreen = false } }
+            if let sheet = picked { FullScreenSheet(sheet: sheet) { fullScreen = false }.environment(model) }
         }
         .confirmationDialog("Remove this sheet?", isPresented: $confirmRemove, titleVisibility: .visible) {
             Button("Remove", role: .destructive) {

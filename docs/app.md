@@ -44,7 +44,8 @@ mapped from the store's models, so a model change does not reach the views.
   and kept in its row so every device shares it. When it is on, "Capo n" stands above the Chords and Tab
   views, the two written for the hand on the capo; the transposition does not move it, the piano drops it from Chords
   ("Chord diagrams"). A re-import keeps it.
-- **Favourites come first in Songs.** The star in a song's bar, or a row's context menu, sets the row's
+- **Favourites come first in Songs.** The star (in a song's bar on iPad and the Mac, in its song menu on iPhone,
+  where a third bar item would fold play and the menu into an overflow), or a row's context menu, sets the row's
   `favorite`; the list shows the favourites, then the others, each newest first, and a favourite's tile is a
   star. A re-import keeps it.
 - **A copy is named by `SongFolder.destinationName(for:)`** (its name plus 8 characters of its id), so two

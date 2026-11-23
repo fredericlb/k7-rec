@@ -15,6 +15,7 @@ struct ChordsTab: View {
     /// The chord whose diagram is open, by its line and its place in the line.
     @State private var shown: ChordSpot?
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(AppModel.self) private var model
     /// The chord sheet's mono size: 13 on iPhone, 17 on iPad and the Mac, with the line heights the design system sets.
     private var size: CGFloat { Metrics(sizeClass).wide ? 17 : 13 }
 
@@ -69,6 +70,7 @@ struct ChordsTab: View {
                 DiagramCard(symbol: symbol, cell: 120)
             }
             .padding(.top, K7Space.s12).padding(.horizontal, K7Space.s12)
+            .environment(model)
             .presentationCompactAdaptation(.popover)
                 .presentationBackground(k7.menu)
         }

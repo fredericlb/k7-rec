@@ -68,7 +68,7 @@ struct SongsScreen: View {
                     .accessibilityLabel("Add song")
                 }
             }
-            .sheet(isPresented: $browsingServer) { ServerImportSheet() }
+            .sheet(isPresented: $browsingServer) { ServerImportSheet().environment(model) }
             .alert("New song", isPresented: $newOpen) {
                 TextField("Title", text: $newTitle)
                 TextField("Artist", text: $newArtist)
