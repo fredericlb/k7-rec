@@ -21,6 +21,7 @@ xcodebuild -project K7Rec.xcodeproj -scheme K7Rec \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
 (cd Packages/RehearsalText && swift test)   # same for RehearsalAudio, RehearsalStems, RehearsalStore, RehearsalFTP and RehearsalSFTP
 xcodebuild -project K7Rec.xcodeproj -scheme K7Rec -destination 'platform=macOS,variant=Mac Catalyst' build
+./dev-mac.sh                           # the Mac app, rebuilt and relaunched on every save (docs/mac.md)
 ```
 
 Third-party code: GRDB and Yams (MIT), and the guitar chord data of `@tombatossals/chords-db`
