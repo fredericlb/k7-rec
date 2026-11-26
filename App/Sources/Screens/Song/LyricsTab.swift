@@ -6,13 +6,15 @@ struct LyricsTab: View {
     let text: String
     let active: Int?
     let onTap: (Int) -> Void
+    /// The line kept in view without a highlight: where a take with no timecodes has reached.
+    var reached: Int? = nil
 
     @State private var memo = ParsedMemo()
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
         let (lines, timed) = memo.get(text, 0) { t, _ in (ChordSheet.parse(t), Set(LyricsTiming.byLine(t).map(\.line))) }
-        FollowedScroll(active: active) {
+        FollowedScroll(active: active ?? reached) {
             LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(lines.enumerated()), id: \.offset) { i, line in
                     row(line).followed(index: i, active: active, timed: timed, onTap: onTap)

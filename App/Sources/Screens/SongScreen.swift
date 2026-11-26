@@ -18,6 +18,10 @@ struct SongScreen: View {
     @State private var selected: SongTab?
     @State private var wave = Wave(samples: [], duration: 0)
     @State private var active: Int?
+    /// Where a take with no timecodes has reached: a line kept in view, not highlighted.
+    @State private var reached: Int?
+    /// How far a take is through the song, for the Tab view.
+    @State private var takeProgress: Double?
     @State private var menuOpen = false
     @State private var stemsOpen = false
     @State private var hasStems = false
@@ -95,6 +99,7 @@ struct SongScreen: View {
         // Read again when iCloud delivers a file: a song added on another device may arrive while it is shown.
         .task(id: model.sync?.deliveries) { if wave.samples.isEmpty { wave = await model.library.wave(of: live) } }
         .task(id: "\(playing)-\(current.rawValue)") { await follow() }
+        .task(id: "\(followsTake)-\(current.rawValue)-\(wave.duration)") { await followTake() }
         .onAppear { model.shownSong = live }
         .onDisappear { if model.shownSong?.id == live.id { model.shownSong = nil } }
         .onChange(of: current) { refreshActive() }
@@ -197,11 +202,11 @@ struct SongScreen: View {
         case .chords:
             let diagrams = live.hasDiagrams ? SongText.diagramChords(chords: live.chords, lyrics: live.lyrics, semitones: semitones) : []
             HStack(alignment: .top, spacing: 0) {
-                ChordsTab(text: live.chords, semitones: semitones, active: active, onTap: seek, tappable: !metrics.wide && !diagrams.isEmpty)
+                ChordsTab(text: live.chords, semitones: semitones, active: active, onTap: seek, reached: reached, tappable: !metrics.wide && !diagrams.isEmpty)
                 if metrics.wide, !diagrams.isEmpty { DiagramColumn(chords: diagrams).frame(width: 176).padding(.trailing, metrics.margin) }
             }
-        case .lyrics: LyricsTab(text: live.lyrics, active: active, onTap: seek)
-        case .tab: TabTab(text: live.tab)
+        case .lyrics: LyricsTab(text: live.lyrics, active: active, onTap: seek, reached: reached)
+        case .tab: TabTab(text: live.tab, progress: takeProgress)
         case .sheets: SheetsTab(song: live) { picking = .sheet; pickedKind = .sheet }
         case .info: InfoTab(song: live)
         }
@@ -221,6 +226,24 @@ struct SongScreen: View {
             refreshActive(timing)
             try? await Task.sleep(nanoseconds: 150_000_000)
         }
+    }
+
+    /// A take of this song runs while the song itself is not playing; playback, when it runs, is what is followed.
+    private var followsTake: Bool { model.recording && model.takeSongID == live.id && !playing }
+
+    /// Scrolls with the take: by the timecodes, highlighting the line, else spread over the song's length (docs/app.md).
+    private func followTake() async {
+        defer { reached = nil; takeProgress = nil }
+        guard followsTake else { return }
+        while followsTake, !Task.isCancelled {
+            let t = model.recorder.elapsed
+            if let at = SongText.takeLine(followedText, at: t, length: wave.duration) {
+                if at.timed { active = at.line; reached = nil } else { active = nil; reached = at.line }
+            }
+            takeProgress = wave.duration > 0 ? min(t / wave.duration, 1) : nil
+            try? await Task.sleep(nanoseconds: 250_000_000)
+        }
+        refreshActive()
     }
 
     private func seek(line: Int) {

@@ -189,6 +189,12 @@ speaker is picked up by the microphone; headphones are not), and K7 REC in an au
   once, and writes the line only when it changes, so the lists redraw on a line change and not on every frame. A tap on a timed
   line seeks `lyrics lead` seconds early (1 s, kept in UserDefaults, a Settings stepper) and starts playing,
   as the web does.
+- **A take of the open song scrolls it**, at the take's clock (`recorder.elapsed`, which stops while the take
+  rests), polled every 250 ms while the song itself is not playing; playback, when it runs, is followed instead.
+  With timecodes, the line is the one sung at that time and is highlighted, as in playback. Without them, the sung
+  lines (a chord line and the words under it count as one; sections and blank lines take no time) are spread evenly
+  over the recording's length and the reached line is only kept in view, not highlighted, since it is a guess.
+  The Tab view scrolls its blocks the same way. A song with no audio has no length, so only its timecodes move it.
 - **Transposition is kept per song in UserDefaults**, folded into -5...+6. It moves what is read (the
   chords and lyrics tabs and the diagrams; the files are never rewritten) and what is heard: the song, its
   instrumental and its stems play pitch-shifted at the same tempo (`docs/audio.md`), a take as recorded. The fold

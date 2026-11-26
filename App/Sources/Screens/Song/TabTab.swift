@@ -7,6 +7,8 @@ import UIKit
 
 struct TabTab: View {
     let text: String
+    /// How far a take is through the song, 0...1, nil when none runs; the body's blocks scroll with it.
+    var progress: Double? = nil
 
     @State private var headerOpen = false
     /// The card's inner width, which a row of systems fills.
@@ -16,41 +18,53 @@ struct TabTab: View {
 
     var body: some View {
         let parts = SongText.tabParts(Tablature.parse(text))
-        ScrollView(.vertical) {
-            VStack(alignment: .leading, spacing: 4) {
-                if !parts.header.isEmpty {
-                    Button { headerOpen.toggle() } label: {
-                        Label(headerOpen ? "Hide header" : "Show header", systemImage: headerOpen ? "chevron.down" : "chevron.right")
-                            .font(.footnote)
-                            .frame(minHeight: 44)
+        let count = SongText.tabBlocks(parts.body).count
+        let reached = progress.flatMap { SongText.spread(count, at: $0, length: 1) }
+        ScrollViewReader { proxy in
+            ScrollView(.vertical) {
+                VStack(alignment: .leading, spacing: 4) {
+                    if !parts.header.isEmpty {
+                        Button { headerOpen.toggle() } label: {
+                            Label(headerOpen ? "Hide header" : "Show header", systemImage: headerOpen ? "chevron.down" : "chevron.right")
+                                .font(.footnote)
+                                .frame(minHeight: 44)
+                        }
+                        .buttonStyle(.borderless)
+                        if headerOpen { nodes(parts.header) }
                     }
-                    .buttonStyle(.borderless)
-                    if headerOpen { nodes(parts.header) }
+                    VStack(alignment: .leading, spacing: 4) { nodes(parts.body, ids: true) }
+                        .padding(.horizontal, 12).padding(.vertical, 14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .card(fill: k7.surfaceSolid)
                 }
-                VStack(alignment: .leading, spacing: 4) { nodes(parts.body) }
-                    .padding(.horizontal, 12).padding(.vertical, 14)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .card(fill: k7.surfaceSolid)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, Metrics(sizeClass).margin).padding(.vertical, 6)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, Metrics(sizeClass).margin).padding(.vertical, 6)
+            // The scroll view's width, not the card's: the card grows with what it holds, the screen does not.
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 - 2 * Metrics(sizeClass).margin - 24 }
+            .onChange(of: reached) { _, block in
+                if let block { withAnimation { proxy.scrollTo("block-\(max(block - 1, 0))", anchor: .top) } }
+            }
         }
-        // The scroll view's width, not the card's: the card grows with what it holds, the screen does not.
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 - 2 * Metrics(sizeClass).margin - 24 }
     }
 
-    private func nodes(_ list: [TabNode]) -> some View {
-        ForEach(Array(SongText.tabBlocks(list).enumerated()), id: \.offset) { _, block in
-            switch block {
-            case .node(.empty): Color.clear.frame(height: size * 0.7)
-            case .node(.section(let label)):
-                Text(label.uppercased()).font(.caption.bold()).tracking(1).foregroundStyle(k7.accentIcon).padding(.top, 10)
-            case .node(.text(let t)):
-                Text(t).font(.system(size: size, design: .monospaced)).foregroundStyle(k7.textSecondary).fixedSize(horizontal: false, vertical: true)
-            case .node(.system(let system)): staff(system)
-            case .systems(let group):
-                FlowRows(spacing: size * 2, top: true) { ForEach(Array(group.enumerated()), id: \.offset) { _, system in staff(system) } }
-            }
+    /// The blocks of `list`; the body's carry ids, so a take can scroll to them.
+    private func nodes(_ list: [TabNode], ids: Bool = false) -> some View {
+        ForEach(Array(SongText.tabBlocks(list).enumerated()), id: \.offset) { i, block in
+            self.block(block).id(ids ? "block-\(i)" : "header-\(i)")
+        }
+    }
+
+    @ViewBuilder private func block(_ block: TabBlock) -> some View {
+        switch block {
+        case .node(.empty): Color.clear.frame(height: size * 0.7)
+        case .node(.section(let label)):
+            Text(label.uppercased()).font(.caption.bold()).tracking(1).foregroundStyle(k7.accentIcon).padding(.top, 10)
+        case .node(.text(let t)):
+            Text(t).font(.system(size: size, design: .monospaced)).foregroundStyle(k7.textSecondary).fixedSize(horizontal: false, vertical: true)
+        case .node(.system(let system)): staff(system)
+        case .systems(let group):
+            FlowRows(spacing: size * 2, top: true) { ForEach(Array(group.enumerated()), id: \.offset) { _, system in staff(system) } }
         }
     }
 

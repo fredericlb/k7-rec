@@ -17,6 +17,8 @@ final class AppModel {
     let server: ServerAccount
     let metronome = MetronomeControl()
     var recording = false
+    /// The song the running take belongs to, nil for a take of its own; its page scrolls with the take.
+    private(set) var takeSongID: String?
     /// Whether the take panel (controls, highlights, metronome) is shown over the current screen.
     var recorderOpen = false
     /// The song whose page is open in the Songs tab.
@@ -108,6 +110,7 @@ final class AppModel {
         guard !recording else { return }
         let title = song?.title ?? "Take " + Date().formatted(date: .abbreviated, time: .shortened)
         recording = await recorder.start(songID: song?.id ?? "", title: title)
+        takeSongID = recording ? song?.id : nil
         if !recording { notice = "The recording could not start: " + (recorder.failure ?? "the microphone did not answer.") }
     }
 
@@ -116,6 +119,7 @@ final class AppModel {
         stopListening()
         let saved = await recorder.stop()
         recording = false
+        takeSongID = nil
         notice = recorder.failure ?? notice
         restSession()
         if let saved {
@@ -128,7 +132,7 @@ final class AppModel {
         stopListening()
         await recorder.resume()
         notice = recorder.failure ?? notice
-        if !recorder.isRecording { recording = false; restSession() }
+        if !recorder.isRecording { recording = false; takeSongID = nil; restSession() }
     }
 
     /// The player's id for what the running take recorded; it grows, so it is loaded afresh each time.

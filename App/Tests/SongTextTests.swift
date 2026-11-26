@@ -14,6 +14,23 @@ final class SongTextTests: XCTestCase {
         XCTAssertEqual(SongText.activeLine(timed, at: 12), 2)
     }
 
+    func testATakeFollowsTheTimecodesWhenThereAreAny() {
+        XCTAssertNil(SongText.takeLine(timed, at: 2, length: 100))
+        XCTAssertEqual(SongText.takeLine(timed, at: 10, length: 100)?.line, 2)
+        XCTAssertEqual(SongText.takeLine(timed, at: 10, length: 100)?.timed, true)
+    }
+
+    func testWithoutTimecodesATakeSpreadsTheSungLinesOverTheSongsLength() {
+        let sheet = "Verse:\nAm   F\nHello world\n\nC\nSecond line\nThird line"
+        // Sung lines: the chord line 1 (with its words), 4 (with its words), 6; the section and blank lines take no time.
+        XCTAssertEqual(SongText.takeLine(sheet, at: 0, length: 90)?.line, 1)
+        XCTAssertEqual(SongText.takeLine(sheet, at: 45, length: 90)?.line, 4)
+        XCTAssertEqual(SongText.takeLine(sheet, at: 89, length: 90)?.line, 6)
+        XCTAssertEqual(SongText.takeLine(sheet, at: 400, length: 90)?.line, 6, "a take longer than the song stays at the end")
+        XCTAssertEqual(SongText.takeLine(sheet, at: 45, length: 90)?.timed, false)
+        XCTAssertNil(SongText.takeLine(sheet, at: 10, length: 0), "a song with no audio has no length to spread over")
+    }
+
     func testATapSeeksALeadBeforeTheLineAndNeverBeforeZero() {
         XCTAssertEqual(SongText.seekTime(line: 2, in: timed, lead: 1), 8.5)
         XCTAssertEqual(SongText.seekTime(line: 0, in: timed, lead: 6), 0)

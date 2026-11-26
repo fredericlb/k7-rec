@@ -25,6 +25,29 @@ enum SongText {
         LyricsTiming.lineAt(LyricsTiming.byLine(text), seconds: seconds)
     }
 
+    /// The line a take is at after `seconds`: by the text's timecodes when it has any (`timed`, so it is highlighted),
+    /// else the sung lines spread evenly over the song's `length`, a chord line and the words under it as one.
+    static func takeLine(_ text: String, at seconds: Double, length: Double) -> (line: Int, timed: Bool)? {
+        let timing = LyricsTiming.byLine(text)
+        if !timing.isEmpty { return LyricsTiming.lineAt(timing, seconds: seconds).map { ($0, true) } }
+        let lines = ChordSheet.parse(text)
+        let sung = lines.indices.filter { i in
+            switch lines[i] {
+            case .chords: true
+            case .lyrics: i == 0 || { if case .chords = lines[i - 1] { false } else { true } }()
+            default: false
+            }
+        }
+        guard let k = spread(sung.count, at: seconds, length: length) else { return nil }
+        return (sung[k], false)
+    }
+
+    /// Which of `count` equal parts of `length` seconds holds `seconds`, the last one past the end; nil with no length.
+    static func spread(_ count: Int, at seconds: Double, length: Double) -> Int? {
+        guard count > 0, length > 0 else { return nil }
+        return min(count - 1, max(0, Int(seconds / length * Double(count))))
+    }
+
     /// Where a tap on a timed line seeks: `lead` seconds early, never before the start.
     static func seekTime(line: Int, in text: String, lead: Double) -> Double? {
         LyricsTiming.byLine(text).first { $0.line == line }.map { max(0, $0.t - lead) }

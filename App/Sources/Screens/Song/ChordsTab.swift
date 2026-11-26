@@ -8,6 +8,8 @@ struct ChordsTab: View {
     let semitones: Int
     let active: Int?
     let onTap: (Int) -> Void
+    /// The line kept in view without a highlight: where a take with no timecodes has reached.
+    var reached: Int? = nil
     /// Whether a chord opens its diagram when tapped: on iPhone, where no column shows them.
     var tappable = false
 
@@ -21,7 +23,7 @@ struct ChordsTab: View {
 
     var body: some View {
         let (lines, timed) = memo.get(text, semitones) { (SongText.displayLines($0, semitones: $1), Set(LyricsTiming.byLine($0).map(\.line))) }
-        FollowedScroll(axes: [.vertical, .horizontal], active: active) {
+        FollowedScroll(axes: [.vertical, .horizontal], active: active ?? reached) {
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(lines.enumerated()), id: \.offset) { i, line in
                     row(line, i).fixedSize(horizontal: true, vertical: false).followed(index: i, active: active, timed: timed, onTap: onTap)

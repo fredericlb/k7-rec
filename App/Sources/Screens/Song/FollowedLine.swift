@@ -16,7 +16,7 @@ extension View {
     }
 }
 
-/// A scrolling column of lines that keeps the sung one in view.
+/// A scrolling column of lines that keeps `active` in view: the sung line, or where an untimed take has reached.
 struct FollowedScroll<Content: View>: View {
     var axes: Axis.Set = .vertical
     var active: Int?
